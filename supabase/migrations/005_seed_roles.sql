@@ -1,0 +1,19 @@
+-- ============================================================
+-- AZIM MOTORS - Migration 005: Seed / First Admin Setup
+-- ============================================================
+-- After creating your first user via Supabase Auth (email invite),
+-- run the UPDATE below with that user's UUID to promote them to admin.
+--
+-- Step 1: Find the user UUID from Supabase Dashboard > Authentication > Users
+-- Step 2: Uncomment and run:
+--
+-- UPDATE azim_motors.user_profiles
+--   SET role = 'admin'
+--   WHERE id = '<paste-your-admin-user-uuid-here>';
+--
+-- ── Also set schema search path so JS clients can omit schema prefix ──
+-- Run this in Supabase: Settings > Database > Schema Search Path
+-- Add: azim_motors
+--
+-- Or run via SQL:
+ALTER DATABASE postgres SET search_path TO azim_motors, public;
