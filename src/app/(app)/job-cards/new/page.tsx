@@ -1,0 +1,256 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import type { Customer, Vehicle, UserProfile } from '@/lib/supabase/types'
+
+export default function NewJobCardPage() {
+  const router = useRouter()
+  const supabase = createClient()
+  const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  // Step 1: Customer
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [newCustomer, setNewCustomer] = useState({ full_name: '', phone: '', email: '' })
+  const [createNewCustomer, setCreateNewCustomer] = useState(false)
+
+  // Step 2: Vehicle
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
+  const [newVehicle, setNewVehicle] = useState({ registration: '', make: '', model: '', year: '', color: '' })
+  const [createNewVehicle, setCreateNewVehicle] = useState(false)
+
+  // Step 3: Job details
+  const [mechanics, setMechanics] = useState<UserProfile[]>([])
+  const [form, setForm] = useState({
+    complaint: '',
+    assigned_mechanic: '',
+    estimated_return: '',
+    notes: '',
+  })
+
+  useEffect(() => {
+    supabase.from('customers').select('*').order('full_name').then(({ data }) => setCustomers(data ?? []))
+    supabase.from('user_profiles').select('*').eq('role', 'mechanic').eq('is_active', true).then(({ data }) => setMechanics(data ?? []))
+  }, [])
+
+  useEffect(() => {
+    if (selectedCustomer) {
+      supabase.from('vehicles').select('*').eq('customer_id', selectedCustomer.id).then(({ data }) => setVehicles(data ?? []))
+    }
+  }, [selectedCustomer])
+
+  const filteredCustomers = customers.filter(c =>
+    c.full_name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    c.phone.includes(customerSearch)
+  )
+
+  async function handleSubmit() {
+    setLoading(true)
+    setError('')
+    try {
+      let customerId = selectedCustomer?.id
+      if (createNewCustomer) {
+        const { data, error } = await supabase.from('customers').insert(newCustomer).select().single()
+        if (error) throw error
+        customerId = data.id
+      }
+
+      let vehicleId = selectedVehicle?.id
+      if (createNewVehicle) {
+        const { data, error } = await supabase.from('vehicles').insert({ ...newVehicle, customer_id: customerId, year: newVehicle.year ? parseInt(newVehicle.year) : null }).select().single()
+        if (error) throw error
+        vehicleId = data.id
+      }
+
+      const { data: jobCard, error: jobError } = await supabase
+        .from('job_cards')
+        .insert({
+          vehicle_id: vehicleId,
+          customer_id: customerId,
+          complaint: form.complaint,
+          assigned_mechanic: form.assigned_mechanic || null,
+          estimated_return: form.estimated_return || null,
+          notes: form.notes || null,
+        })
+        .select()
+        .single()
+
+      if (jobError) throw jobError
+      router.push(`/job-cards/${jobCard.id}`)
+    } catch (e: any) {
+      setError(e.message)
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="p-4 sm:p-6 max-w-2xl">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-lg sm:text-xl font-bold text-slate-900">New Job Card</h1>
+        <div className="flex items-center gap-2 mt-3">
+          {[1, 2, 3].map(s => (
+            <div key={s} className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= s ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-500'}`}>{s}</div>
+              {s < 3 && <div className={`h-0.5 w-12 ${step > s ? 'bg-blue-600' : 'bg-slate-200'}`} />}
+            </div>
+          ))}
+          <span className="text-sm text-slate-500 ml-2">{step === 1 ? 'Customer' : step === 2 ? 'Vehicle' : 'Job Details'}</span>
+        </div>
+      </div>
+
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm mb-4">{error}</div>}
+
+      <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 space-y-4">
+        {/* Step 1: Customer */}
+        {step === 1 && (
+          <>
+            <div className="flex gap-2 mb-2">
+              <button onClick={() => setCreateNewCustomer(false)} className={`px-3 py-1.5 text-sm rounded-lg border font-medium ${!createNewCustomer ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-600'}`}>
+                Existing Customer
+              </button>
+              <button onClick={() => setCreateNewCustomer(true)} className={`px-3 py-1.5 text-sm rounded-lg border font-medium ${createNewCustomer ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-600'}`}>
+                New Customer
+              </button>
+            </div>
+            {!createNewCustomer ? (
+              <>
+                <input
+                  placeholder="Search customer by name or phone..."
+                  value={customerSearch}
+                  onChange={e => setCustomerSearch(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                  {filteredCustomers.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedCustomer(c)}
+                      className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors ${selectedCustomer?.id === c.id ? 'bg-blue-50 border-l-2 border-blue-600' : ''}`}
+                    >
+                      <p className="text-sm font-medium text-slate-900">{c.full_name}</p>
+                      <p className="text-xs text-slate-500">{c.phone}</p>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <input placeholder="Full name *" value={newCustomer.full_name} onChange={e => setNewCustomer(p => ({ ...p, full_name: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input placeholder="Phone *" value={newCustomer.phone} onChange={e => setNewCustomer(p => ({ ...p, phone: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input placeholder="Email (optional)" value={newCustomer.email} onChange={e => setNewCustomer(p => ({ ...p, email: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </>
+            )}
+          </>
+        )}
+
+        {/* Step 2: Vehicle */}
+        {step === 2 && (
+          <>
+            <div className="flex gap-2 mb-2">
+              <button onClick={() => setCreateNewVehicle(false)} className={`px-3 py-1.5 text-sm rounded-lg border font-medium ${!createNewVehicle ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-600'}`}>
+                Existing Vehicle
+              </button>
+              <button onClick={() => setCreateNewVehicle(true)} className={`px-3 py-1.5 text-sm rounded-lg border font-medium ${createNewVehicle ? 'bg-blue-600 text-white border-blue-600' : 'border-slate-200 text-slate-600'}`}>
+                New Vehicle
+              </button>
+            </div>
+            {!createNewVehicle ? (
+              <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                {vehicles.length === 0 && <p className="px-4 py-3 text-sm text-slate-400">No vehicles for this customer. Add a new one.</p>}
+                {vehicles.map(v => (
+                  <button key={v.id} onClick={() => setSelectedVehicle(v)} className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors ${selectedVehicle?.id === v.id ? 'bg-blue-50 border-l-2 border-blue-600' : ''}`}>
+                    <p className="text-sm font-medium text-slate-900">{v.registration}</p>
+                    <p className="text-xs text-slate-500">{v.make} {v.model} {v.year}</p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input placeholder="Registration *" value={newVehicle.registration} onChange={e => setNewVehicle(p => ({ ...p, registration: e.target.value }))} className="sm:col-span-2 px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input placeholder="Make *" value={newVehicle.make} onChange={e => setNewVehicle(p => ({ ...p, make: e.target.value }))} className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input placeholder="Model *" value={newVehicle.model} onChange={e => setNewVehicle(p => ({ ...p, model: e.target.value }))} className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input placeholder="Year" value={newVehicle.year} onChange={e => setNewVehicle(p => ({ ...p, year: e.target.value }))} className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input placeholder="Color" value={newVehicle.color} onChange={e => setNewVehicle(p => ({ ...p, color: e.target.value }))} className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Step 3: Job Details */}
+        {step === 3 && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Problem / Complaint *</label>
+              <textarea rows={3} value={form.complaint} onChange={e => setForm(p => ({ ...p, complaint: e.target.value }))} placeholder="Describe the issue..." className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Assigned Mechanic</label>
+              <select value={form.assigned_mechanic} onChange={e => setForm(p => ({ ...p, assigned_mechanic: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                <option value="">— Unassigned —</option>
+                {mechanics.map(m => (
+                  <option key={m.id} value={m.id}>{m.full_name}{m.phone ? ` — ${m.phone}` : ''}</option>
+                ))}
+              </select>
+              {form.assigned_mechanic && (() => {
+                const m = mechanics.find(x => x.id === form.assigned_mechanic)
+                return m ? (
+                  <div className="mt-2 flex items-center gap-2.5 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg">
+                    <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      {m.full_name[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">{m.full_name}</p>
+                      {m.phone && <p className="text-xs text-slate-500">{m.phone}</p>}
+                    </div>
+                  </div>
+                ) : null
+              })()}
+              {mechanics.length === 0 && (
+                <p className="text-xs text-slate-400 mt-1.5">
+                  No mechanics yet. <a href="/settings/users" className="text-blue-600 hover:underline">Add mechanics in Settings → Users</a>
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Estimated Return Date</label>
+              <input type="date" value={form.estimated_return} onChange={e => setForm(p => ({ ...p, estimated_return: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Notes</label>
+              <textarea rows={2} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="flex justify-between mt-4">
+        <button onClick={() => step > 1 ? setStep(s => s - 1) : router.back()} className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
+          {step === 1 ? 'Cancel' : 'Back'}
+        </button>
+        {step < 3 ? (
+          <button
+            onClick={() => setStep(s => s + 1)}
+            disabled={step === 1 && !createNewCustomer && !selectedCustomer}
+            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            Next
+          </button>
+        ) : (
+          <button
+            onClick={handleSubmit}
+            disabled={loading || !form.complaint}
+            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loading ? 'Creating...' : 'Create Job Card'}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
