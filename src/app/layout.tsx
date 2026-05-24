@@ -1,11 +1,29 @@
 import type { Metadata } from 'next'
 import { Toaster } from 'sonner'
 import './globals.css'
+import { PwaRegistration } from '@/components/pwa/pwa-registration'
 import { ThemeProvider } from '@/lib/theme'
 
 export const metadata: Metadata = {
   title: 'Hazim Motors',
   description: 'Garage Management System',
+  applicationName: 'Hazim Motors',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Hazim Motors',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: [
+      { url: '/pwa-192x192.svg', type: 'image/svg+xml' },
+      { url: '/pwa-512x512.svg', type: 'image/svg+xml' },
+    ],
+    apple: [{ url: '/apple-touch-icon.svg', type: 'image/svg+xml' }],
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -13,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body className="h-full bg-[transparent] text-[var(--text-strong)]">
         <ThemeProvider>
+          <PwaRegistration />
           {children}
           <Toaster
             position="top-right"
