@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
 import ExcelJS from 'exceljs'
+import { getSessionUser } from '@/lib/auth'
+import { getStockExportData } from '@/lib/data'
 
 export async function GET(req: NextRequest) {
+  const user = await getSessionUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { searchParams } = req.nextUrl
   const format = searchParams.get('format') ?? 'excel'
-
-  const supabase = await createServiceClient()
-
-  const { data: parts } = await supabase
-    .from('parts')
-    .select('*, suppliers(name)')
-    .eq('is_active', true)
-    .order('name')
+  const parts = await getStockExportData()
 
   if (format === 'excel') {
     const wb = new ExcelJS.Workbook()
@@ -35,7 +34,7 @@ export async function GET(req: NextRequest) {
     ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } }
     ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
 
-    parts?.forEach((p: any) => {
+    parts.forEach(p => {
       const isLow = p.quantity <= p.reorder_level
       const row = ws.addRow({
         name: p.name,
@@ -69,7 +68,7 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  const rows = parts?.map((p: any) => {
+  const rows = parts.map(p => {
     const isLow = p.quantity <= p.reorder_level
     return `<tr style="${isLow ? 'background:#fef2f2;' : ''}">
       <td>${p.name}</td><td>${p.part_number ?? ''}</td>
@@ -77,7 +76,7 @@ export async function GET(req: NextRequest) {
       <td>${p.reorder_level}</td><td style="color:${isLow ? '#dc2626' : '#16a34a'}">${isLow ? 'LOW' : 'OK'}</td>
       <td>$${p.unit_cost.toLocaleString()}</td>
       <td>$${(p.quantity * p.unit_cost).toLocaleString()}</td>
-      <td>${(p as any).suppliers?.name ?? ''}</td>
+      <td>${p.suppliers?.name ?? ''}</td>
       <td>${p.location ?? ''}</td>
     </tr>`
   }).join('')
@@ -87,7 +86,7 @@ export async function GET(req: NextRequest) {
     <style>body{font-family:sans-serif;font-size:11px}table{width:100%;border-collapse:collapse}
     th,td{border:1px solid #ccc;padding:4px 6px;text-align:left}th{background:#1e3a5f;color:#fff}</style></head>
     <body><h1>Azim Motors — Stock Report</h1>
-    <p>Generated: ${new Date().toLocaleDateString('en-KE')} | Total parts: ${parts?.length} | Total value: $${totalValue.toLocaleString()}</p>
+    <p>Generated: ${new Date().toLocaleDateString('en-KE')} | Total parts: ${parts.length} | Total value: $${totalValue.toLocaleString()}</p>
     <table><thead><tr><th>Part</th><th>Part #</th><th>Qty</th><th>Reorder</th><th>Status</th><th>Unit Cost</th><th>Stock Value</th><th>Supplier</th><th>Location</th></tr></thead>
     <tbody>${rows}</tbody></table></body></html>`
 

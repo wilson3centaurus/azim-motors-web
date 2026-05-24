@@ -1,17 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { formatDate, JOB_STATUS_COLORS, cn } from '@/lib/utils'
+import { getCustomerDetail } from '@/lib/data'
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-
-  const [{ data: customer }, { data: vehicles }, { data: jobs }] = await Promise.all([
-    supabase.from('customers').select('*').eq('id', id).single(),
-    supabase.from('vehicles').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
-    supabase.from('job_cards').select('id, job_number, status, complaint, date_received, estimated_return, vehicles(registration)').eq('customer_id', id).order('created_at', { ascending: false }),
-  ])
+  const { customer, vehicles, jobs } = await getCustomerDetail(id)
 
   if (!customer) notFound()
 
@@ -56,7 +50,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         </div>
         <div className="divide-y divide-slate-50">
           {vehicles?.length === 0 && <p className="px-5 py-4 text-sm text-slate-400">No vehicles registered.</p>}
-          {vehicles?.map((v: any) => (
+          {vehicles?.map(v => (
             <div key={v.id} className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3">
               <div className="min-w-0">
                 <p className="font-medium text-slate-900">{v.registration}</p>
@@ -89,7 +83,7 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
             </thead>
             <tbody className="divide-y divide-slate-50">
               {jobs?.length === 0 && <tr><td colSpan={5} className="px-5 py-6 text-center text-slate-400">No jobs yet.</td></tr>}
-              {jobs?.map((j: any) => (
+              {jobs?.map(j => (
                 <tr key={j.id} className="hover:bg-slate-50">
                   <td className="px-4 sm:px-5 py-3">
                     <Link href={`/job-cards/${j.id}`} className="text-blue-600 hover:underline font-medium">{j.job_number}</Link>

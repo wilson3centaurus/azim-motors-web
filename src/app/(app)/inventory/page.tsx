@@ -1,16 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { formatCurrency, cn } from '@/lib/utils'
 import { Plus, AlertTriangle } from 'lucide-react'
+import { listParts } from '@/lib/data'
 
 export default async function InventoryPage() {
-  const supabase = await createClient()
-
-  const { data: parts } = await supabase
-    .from('parts')
-    .select('*, suppliers(name)')
-    .eq('is_active', true)
-    .order('name')
+  const parts = await listParts()
 
   const lowStock = parts?.filter(p => p.quantity <= p.reorder_level) ?? []
 
@@ -77,7 +71,7 @@ export default async function InventoryPage() {
                     <td className="hidden sm:table-cell px-5 py-3 text-slate-500">{part.reorder_level}</td>
                     <td className="hidden sm:table-cell px-5 py-3 text-slate-700">{formatCurrency(part.unit_cost)}</td>
                     <td className="hidden lg:table-cell px-5 py-3 text-slate-700">{part.selling_price ? formatCurrency(part.selling_price) : '—'}</td>
-                    <td className="hidden md:table-cell px-5 py-3 text-slate-500">{(part as any).suppliers?.name ?? '—'}</td>
+                    <td className="hidden md:table-cell px-5 py-3 text-slate-500">{part.suppliers?.name ?? '—'}</td>
                     <td className="hidden lg:table-cell px-5 py-3 text-slate-500">{part.location ?? '—'}</td>
                   </tr>
                 )

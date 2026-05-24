@@ -2,14 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useTransition } from 'react'
 import { cn } from '@/lib/utils'
 import { useSidebar } from '@/lib/sidebar-context'
-import {
-  LayoutDashboard, ClipboardList, Package, History,
-  CalendarClock, Users, FileBarChart2, Settings, LogOut, Wrench, X,
-} from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { LayoutDashboard, ClipboardList, Package, History, CalendarClock, Users, FileBarChart2, Settings, LogOut, Wrench, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 const NAV_GROUPS = [
@@ -47,15 +43,21 @@ export function Sidebar() {
   const pathname = usePathname()
   const { open, close } = useSidebar()
   const router = useRouter()
+  const [loggingOut, startLogout] = useTransition()
 
   /* Close drawer on every route change */
   useEffect(() => { close() }, [pathname, close])
 
   async function handleLogout() {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+    startLogout(async () => {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+      })
+      const result = await response.json()
+
+      router.push(result.redirectTo ?? '/login')
+      router.refresh()
+    })
   }
 
   return (
@@ -73,39 +75,43 @@ export function Sidebar() {
       {/* ── Sidebar panel ───────────────────────────────── */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 w-56 bg-white border-r border-gray-100 flex flex-col z-30',
+          'fixed inset-y-0 left-0 z-30 flex w-[var(--sidebar-width)] flex-col overflow-hidden border-r border-white/70 bg-[rgba(255,255,255,0.86)] shadow-[0_30px_80px_-48px_rgba(15,36,33,0.7)] backdrop-blur-xl',
           'transition-transform duration-200 ease-in-out',
           open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
-        {/* Logo + close btn */}
-        <div className="flex items-center gap-2.5 px-4 h-12 border-b border-gray-100 flex-shrink-0">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-            <Wrench className="w-3.5 h-3.5 text-white" />
+        <div className="border-b border-black/5 px-5 pb-5 pt-6">
+          <div className="flex items-start gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1f5f59] shadow-[0_18px_30px_-18px_rgba(31,95,89,0.7)]">
+              <Wrench className="h-5 w-5 text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-lg font-bold tracking-tight text-slate-900">Azim Motors</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Compact garage control for front desk and workshop staff.</p>
+            </div>
+            <button
+              type="button"
+              onClick={close}
+              aria-label="Close menu"
+              className="lg:hidden rounded-xl p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-slate-900 leading-none tracking-tight">Azim Motors</p>
-            <p className="text-[10px] text-slate-400 mt-0.5 leading-none">Garage System</p>
+
+          <div className="mt-5 rounded-[22px] border border-[#e6ddd2] bg-[#f6efe3] p-3.5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#1f5f59]">Today</p>
+            <p className="mt-2 text-sm font-semibold text-slate-900">Stay on top of check-ins, live jobs, and low-stock parts.</p>
           </div>
-          {/* Close button — mobile only */}
-          <button
-            type="button"
-            onClick={close}
-            aria-label="Close menu"
-            className="lg:hidden p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-2.5 py-3 overflow-y-auto space-y-4">
+        <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
           {NAV_GROUPS.map(({ label, items }) => (
             <div key={label}>
-              <p className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.1em] px-2.5 mb-1.5">
+              <p className="px-3 text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400">
                 {label}
               </p>
-              <div className="space-y-0.5">
+              <div className="mt-2 space-y-1">
                 {items.map(({ href, label: itemLabel, icon: Icon }) => {
                   const active = pathname === href || pathname.startsWith(href + '/')
                   return (
@@ -113,19 +119,19 @@ export function Sidebar() {
                       key={href}
                       href={href}
                       className={cn(
-                        'flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] transition-all duration-150',
+                        'group flex items-center gap-3 rounded-2xl px-3 py-3 text-[13px] transition-all duration-150',
                         active
-                          ? 'bg-blue-50 text-blue-700 font-semibold'
-                          : 'text-slate-500 font-medium hover:bg-slate-50 hover:text-slate-800',
+                          ? 'bg-[#e9f5f2] text-[#184944] shadow-[0_18px_35px_-24px_rgba(24,73,68,0.45)]'
+                          : 'text-slate-500 hover:bg-white/80 hover:text-slate-800',
                       )}
                     >
-                      <Icon
-                        className={cn(
-                          'w-[15px] h-[15px] flex-shrink-0',
-                          active ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-500',
-                        )}
-                      />
-                      {itemLabel}
+                      <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors', active ? 'bg-white text-[#1f5f59]' : 'bg-[#f2eee7] text-slate-500 group-hover:bg-white')}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{itemLabel}</p>
+                        <p className="truncate text-[11px] text-slate-400">Open {itemLabel.toLowerCase()}</p>
+                      </div>
                     </Link>
                   )
                 })}
@@ -134,18 +140,19 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* Sign out */}
-        <div className="px-2.5 pb-3 pt-2 border-t border-gray-100 flex-shrink-0">
+        <div className="border-t border-black/5 px-3 pb-4 pt-3">
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium text-slate-400 hover:bg-slate-50 hover:text-slate-700 w-full transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+            disabled={loggingOut}
+            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-[13px] font-medium text-slate-500 transition-all duration-150 hover:bg-white/80 hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1f5f59] focus:ring-offset-1"
           >
-            <LogOut className="w-[15px] h-[15px] flex-shrink-0" />
-            Sign out
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f2eee7] text-slate-500">
+              <LogOut className="h-4 w-4" />
+            </div>
+            {loggingOut ? 'Signing out...' : 'Sign out'}
           </button>
         </div>
-
       </aside>
     </>
   )

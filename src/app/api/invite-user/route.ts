@@ -1,23 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
 
-export async function POST(req: NextRequest) {
-  const { email, role } = await req.json()
-
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: { getAll: () => cookieStore.getAll(), setAll: () => {} },
-    }
+export async function POST() {
+  return NextResponse.json(
+    { error: 'This endpoint is deprecated. Use the local user management flow in Settings.' },
+    { status: 410 },
   )
-
-  const { error } = await supabase.auth.admin.inviteUserByEmail(email, {
-    data: { role, full_name: email.split('@')[0] },
-  })
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
-  return NextResponse.json({ success: true })
 }

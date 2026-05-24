@@ -1,15 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import type { Customer, Vehicle, UserProfile } from '@/lib/supabase/types'
+import { Alert } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { createJobCardAction } from '@/lib/actions'
 
 export default function NewJobCardPage() {
   const router = useRouter()
-  const supabase = createClient()
   const [step, setStep] = useState(1)
-  const [loading, setLoading] = useState(false)
+  const [loading, startTransition] = useTransition()
   const [error, setError] = useState('')
 
   // Step 1: Customer
@@ -35,58 +40,51 @@ export default function NewJobCardPage() {
   })
 
   useEffect(() => {
-    supabase.from('customers').select('*').order('full_name').then(({ data }) => setCustomers(data ?? []))
-    supabase.from('user_profiles').select('*').eq('role', 'mechanic').eq('is_active', true).then(({ data }) => setMechanics(data ?? []))
+    fetch('/api/lookups?resource=job-form')
+      .then(response => response.json())
+      .then(data => {
+        setCustomers(data.customers ?? [])
+        setMechanics(data.mechanics ?? [])
+      })
   }, [])
 
   useEffect(() => {
     if (selectedCustomer) {
-      supabase.from('vehicles').select('*').eq('customer_id', selectedCustomer.id).then(({ data }) => setVehicles(data ?? []))
+      fetch(`/api/lookups?resource=vehicles&customerId=${selectedCustomer.id}`)
+        .then(response => response.json())
+        .then(data => setVehicles(data.vehicles ?? []))
     }
   }, [selectedCustomer])
 
-  const filteredCustomers = customers.filter(c =>
+  const filteredCustomers = useMemo(() => customers.filter(c =>
     c.full_name.toLowerCase().includes(customerSearch.toLowerCase()) ||
     c.phone.includes(customerSearch)
-  )
+  ), [customers, customerSearch])
 
   async function handleSubmit() {
-    setLoading(true)
     setError('')
-    try {
-      let customerId = selectedCustomer?.id
-      if (createNewCustomer) {
-        const { data, error } = await supabase.from('customers').insert(newCustomer).select().single()
-        if (error) throw error
-        customerId = data.id
+    startTransition(async () => {
+      const result = await createJobCardAction({
+        selectedCustomerId: createNewCustomer ? null : selectedCustomer?.id,
+        newCustomer: createNewCustomer ? newCustomer : undefined,
+        selectedVehicleId: createNewVehicle ? null : selectedVehicle?.id,
+        newVehicle: createNewVehicle ? {
+          ...newVehicle,
+          year: newVehicle.year ? parseInt(newVehicle.year, 10) : null,
+        } : undefined,
+        complaint: form.complaint,
+        assigned_mechanic: form.assigned_mechanic || null,
+        estimated_return: form.estimated_return || null,
+        notes: form.notes,
+      })
+
+      if (!result.ok) {
+        setError(result.message)
+        return
       }
 
-      let vehicleId = selectedVehicle?.id
-      if (createNewVehicle) {
-        const { data, error } = await supabase.from('vehicles').insert({ ...newVehicle, customer_id: customerId, year: newVehicle.year ? parseInt(newVehicle.year) : null }).select().single()
-        if (error) throw error
-        vehicleId = data.id
-      }
-
-      const { data: jobCard, error: jobError } = await supabase
-        .from('job_cards')
-        .insert({
-          vehicle_id: vehicleId,
-          customer_id: customerId,
-          complaint: form.complaint,
-          assigned_mechanic: form.assigned_mechanic || null,
-          estimated_return: form.estimated_return || null,
-          notes: form.notes || null,
-        })
-        .select()
-        .single()
-
-      if (jobError) throw jobError
-      router.push(`/job-cards/${jobCard.id}`)
-    } catch (e: any) {
-      setError(e.message)
-      setLoading(false)
-    }
+      router.push(`/job-cards/${result.id}`)
+    })
   }
 
   return (
@@ -104,9 +102,9 @@ export default function NewJobCardPage() {
         </div>
       </div>
 
-      {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm mb-4">{error}</div>}
+      {error && <Alert variant="error" className="mb-4">{error}</Alert>}
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 space-y-4">
+      <Card className="space-y-4 p-4 sm:p-6">
         {/* Step 1: Customer */}
         {step === 1 && (
           <>
@@ -120,11 +118,11 @@ export default function NewJobCardPage() {
             </div>
             {!createNewCustomer ? (
               <>
-                <input
+                <Input
+                  id="job-customer-search"
                   placeholder="Search customer by name or phone..."
                   value={customerSearch}
                   onChange={e => setCustomerSearch(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
                   {filteredCustomers.map(c => (
@@ -141,9 +139,9 @@ export default function NewJobCardPage() {
               </>
             ) : (
               <>
-                <input placeholder="Full name *" value={newCustomer.full_name} onChange={e => setNewCustomer(p => ({ ...p, full_name: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <input placeholder="Phone *" value={newCustomer.phone} onChange={e => setNewCustomer(p => ({ ...p, phone: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <input placeholder="Email (optional)" value={newCustomer.email} onChange={e => setNewCustomer(p => ({ ...p, email: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <Input id="new-customer-name" label="Full name *" value={newCustomer.full_name} onChange={e => setNewCustomer(p => ({ ...p, full_name: e.target.value }))} />
+                <Input id="new-customer-phone" label="Phone *" value={newCustomer.phone} onChange={e => setNewCustomer(p => ({ ...p, phone: e.target.value }))} />
+                <Input id="new-customer-email" type="email" label="Email (optional)" value={newCustomer.email} onChange={e => setNewCustomer(p => ({ ...p, email: e.target.value }))} />
               </>
             )}
           </>
@@ -172,11 +170,11 @@ export default function NewJobCardPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input placeholder="Registration *" value={newVehicle.registration} onChange={e => setNewVehicle(p => ({ ...p, registration: e.target.value }))} className="sm:col-span-2 px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <input placeholder="Make *" value={newVehicle.make} onChange={e => setNewVehicle(p => ({ ...p, make: e.target.value }))} className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <input placeholder="Model *" value={newVehicle.model} onChange={e => setNewVehicle(p => ({ ...p, model: e.target.value }))} className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <input placeholder="Year" value={newVehicle.year} onChange={e => setNewVehicle(p => ({ ...p, year: e.target.value }))} className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <input placeholder="Color" value={newVehicle.color} onChange={e => setNewVehicle(p => ({ ...p, color: e.target.value }))} className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <Input id="new-vehicle-registration" label="Registration *" value={newVehicle.registration} onChange={e => setNewVehicle(p => ({ ...p, registration: e.target.value }))} containerClassName="sm:col-span-2" />
+                <Input id="new-vehicle-make" label="Make *" value={newVehicle.make} onChange={e => setNewVehicle(p => ({ ...p, make: e.target.value }))} />
+                <Input id="new-vehicle-model" label="Model *" value={newVehicle.model} onChange={e => setNewVehicle(p => ({ ...p, model: e.target.value }))} />
+                <Input id="new-vehicle-year" label="Year" value={newVehicle.year} onChange={e => setNewVehicle(p => ({ ...p, year: e.target.value }))} />
+                <Input id="new-vehicle-color" label="Color" value={newVehicle.color} onChange={e => setNewVehicle(p => ({ ...p, color: e.target.value }))} />
               </div>
             )}
           </>
@@ -186,17 +184,15 @@ export default function NewJobCardPage() {
         {step === 3 && (
           <>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Problem / Complaint *</label>
-              <textarea rows={3} value={form.complaint} onChange={e => setForm(p => ({ ...p, complaint: e.target.value }))} placeholder="Describe the issue..." className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              <Textarea id="job-complaint" label="Problem / Complaint *" rows={4} value={form.complaint} onChange={e => setForm(p => ({ ...p, complaint: e.target.value }))} placeholder="Describe the issue..." />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Assigned Mechanic</label>
-              <select value={form.assigned_mechanic} onChange={e => setForm(p => ({ ...p, assigned_mechanic: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+              <Select label="Assigned Mechanic" value={form.assigned_mechanic} onChange={e => setForm(p => ({ ...p, assigned_mechanic: e.target.value }))}>
                 <option value="">— Unassigned —</option>
                 {mechanics.map(m => (
                   <option key={m.id} value={m.id}>{m.full_name}{m.phone ? ` — ${m.phone}` : ''}</option>
                 ))}
-              </select>
+              </Select>
               {form.assigned_mechanic && (() => {
                 const m = mechanics.find(x => x.id === form.assigned_mechanic)
                 return m ? (
@@ -218,37 +214,36 @@ export default function NewJobCardPage() {
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Estimated Return Date</label>
-              <input type="date" value={form.estimated_return} onChange={e => setForm(p => ({ ...p, estimated_return: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <Input id="job-estimated-return" label="Estimated Return Date" type="date" value={form.estimated_return} onChange={e => setForm(p => ({ ...p, estimated_return: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Notes</label>
-              <textarea rows={2} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              <Textarea id="job-notes" label="Notes" rows={3} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
             </div>
           </>
         )}
-      </div>
+      </Card>
 
       <div className="flex justify-between mt-4">
         <button onClick={() => step > 1 ? setStep(s => s - 1) : router.back()} className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">
           {step === 1 ? 'Cancel' : 'Back'}
         </button>
         {step < 3 ? (
-          <button
+          <Button
             onClick={() => setStep(s => s + 1)}
             disabled={step === 1 && !createNewCustomer && !selectedCustomer}
-            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            type="button"
           >
             Next
-          </button>
+          </Button>
         ) : (
-          <button
+          <Button
             onClick={handleSubmit}
             disabled={loading || !form.complaint}
-            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            type="button"
+            loading={loading}
           >
-            {loading ? 'Creating...' : 'Create Job Card'}
-          </button>
+            Create Job Card
+          </Button>
         )}
       </div>
     </div>

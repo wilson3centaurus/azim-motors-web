@@ -1,32 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { formatDate, formatCurrency } from '@/lib/utils'
+import { listRepairRecords } from '@/lib/data'
 
 export default async function RepairRecordsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const params = await searchParams
-  const supabase = await createClient()
-
-  let query = supabase
-    .from('repair_records')
-    .select(`
-      *,
-      vehicles(registration, make, model),
-      customers(full_name, phone),
-      job_cards(job_number)
-    `)
-    .order('completed_at', { ascending: false })
-
-  const { data: records } = await query
-
-  const filtered = records?.filter(r => {
-    if (!params.q) return true
-    const q = params.q.toLowerCase()
-    return (
-      (r as any).vehicles?.registration?.toLowerCase().includes(q) ||
-      (r as any).customers?.full_name?.toLowerCase().includes(q) ||
-      (r as any).job_cards?.job_number?.toLowerCase().includes(q)
-    )
-  }) ?? []
+  const filtered = await listRepairRecords(params.q)
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
@@ -64,7 +42,7 @@ export default async function RepairRecordsPage({ searchParams }: { searchParams
               {filtered.length === 0 && (
                 <tr><td colSpan={7} className="px-5 py-10 text-center text-slate-400">No repair records found.</td></tr>
               )}
-              {filtered.map((r: any) => (
+              {filtered.map(r => (
                 <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 sm:px-5 py-3">
                     <Link href={`/job-cards/${r.job_card_id}`} className="text-blue-600 hover:underline font-medium">

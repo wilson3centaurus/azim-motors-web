@@ -1,59 +1,60 @@
-import { createClient } from '@/lib/supabase/server'
-import { Bell } from 'lucide-react'
+import { Bell, CalendarDays } from 'lucide-react'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { MobileMenuButton } from '@/components/layout/mobile-menu-button'
+import { requireUser } from '@/lib/auth'
 
 export async function Topbar({ title }: { title?: string }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const profile = await requireUser()
 
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('full_name, role')
-    .eq('id', user?.id ?? '')
-    .single()
-
-  const initials = profile?.full_name
+  const initials = profile.full_name
     ?.split(' ')
     .map((n: string) => n[0])
     .slice(0, 2)
     .join('')
     .toUpperCase() ?? 'U'
 
-  return (
-    <header className="h-12 bg-white border-b border-gray-100 shadow-[0_1px_0_0_rgba(0,0,0,0.04)] flex items-center justify-between px-4 sm:px-5 sticky top-0 z-20 flex-shrink-0 gap-3">
+  const today = new Date().toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
 
-      {/* Left — hamburger + optional title */}
-      <div className="flex items-center gap-2 min-w-0">
+  return (
+    <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-3 rounded-[28px] border border-white/60 bg-white/78 px-4 py-3 shadow-[0_22px_60px_-42px_rgba(15,36,33,0.45)] backdrop-blur-xl sm:px-5">
+      <div className="flex min-w-0 items-center gap-3">
         <MobileMenuButton />
-        {title && (
-          <h1 className="text-sm font-semibold text-slate-900 truncate">{title}</h1>
-        )}
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#1f5f59]">Operations Desk</p>
+          <h1 className="truncate font-display text-lg font-bold text-slate-900">{title ?? 'Azim Motors Control Room'}</h1>
+        </div>
       </div>
 
-      {/* Right — actions + user */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
+      <div className="flex shrink-0 items-center gap-2">
+        <div className="hidden items-center gap-2 rounded-2xl border border-[#e6ddd2] bg-[#f7f1e5] px-3 py-2 text-xs font-medium text-slate-700 md:flex">
+          <CalendarDays className="h-4 w-4 text-[#d86f45]" />
+          {today}
+        </div>
+
         <ThemeToggle />
 
         <button
           type="button"
           aria-label="Notifications"
-          className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+          className="rounded-2xl border border-[#e6ddd2] bg-white/90 p-2.5 text-slate-500 transition-colors hover:text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1f5f59] focus:ring-offset-1"
         >
-          <Bell className="w-4 h-4" />
+          <Bell className="h-4 w-4" />
         </button>
 
-        <div className="flex items-center gap-2 ml-0.5 pl-2.5 border-l border-gray-100">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0 shadow-sm">
+        <div className="flex items-center gap-2 rounded-2xl border border-[#e6ddd2] bg-white/90 px-2 py-2 sm:pl-2.5 sm:pr-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[#1f5f59] text-[11px] font-bold text-white shadow-[0_18px_28px_-20px_rgba(31,95,89,0.8)]">
             {initials}
           </div>
-          <div className="hidden sm:block">
-            <p className="text-xs font-semibold text-slate-900 leading-none">{profile?.full_name}</p>
-            <p className="text-[10px] text-slate-400 capitalize mt-0.5">{profile?.role}</p>
+          <div className="hidden min-w-0 sm:block">
+            <p className="truncate text-xs font-semibold leading-none text-slate-900">{profile.full_name}</p>
+            <p className="mt-0.5 text-[10px] capitalize text-slate-400">{profile.role}</p>
           </div>
         </div>
       </div>
-
     </header>
   )
 }

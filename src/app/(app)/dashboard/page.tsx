@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import { StatCard } from '@/components/dashboard/stat-card'
 import {
   Car, Package, Clock, AlertTriangle,
@@ -6,6 +5,8 @@ import {
 } from 'lucide-react'
 import { formatDate, JOB_STATUS_COLORS, cn } from '@/lib/utils'
 import Link from 'next/link'
+import { requireUser } from '@/lib/auth'
+import { getDashboardData } from '@/lib/data'
 
 const QUICK_ACTIONS = [
   {
@@ -43,14 +44,8 @@ const QUICK_ACTIONS = [
 ]
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('full_name')
-    .eq('id', user?.id ?? '')
-    .single()
+  const user = await requireUser()
+  const { profile, stats, upcomingJobs, overdueJobs, recentJobs } = await getDashboardData(user.id)
 
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
@@ -58,35 +53,6 @@ export default async function DashboardPage() {
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
-
-  const [
-    { count: carsInService },
-    { count: pendingJobs },
-    { count: lowStockCount },
-    { data: upcomingJobs },
-    { data: overdueJobs },
-    { data: recentJobs },
-  ] = await Promise.all([
-    supabase.from('job_cards').select('*', { count: 'exact', head: true }).eq('status', 'In Progress'),
-    supabase.from('job_cards').select('*', { count: 'exact', head: true }).eq('status', 'Pending'),
-    supabase.from('low_stock_parts').select('*', { count: 'exact', head: true }),
-    supabase.from('job_cards')
-      .select('id, job_number, estimated_return, status, vehicles(registration, make, model), customers(full_name)')
-      .not('status', 'in', '("Completed","Cancelled")')
-      .not('estimated_return', 'is', null)
-      .gte('estimated_return', new Date().toISOString().split('T')[0])
-      .order('estimated_return', { ascending: true })
-      .limit(5),
-    supabase.from('job_cards')
-      .select('id, job_number, estimated_return, status, vehicles(registration, make, model), customers(full_name)')
-      .not('status', 'in', '("Completed","Cancelled")')
-      .lt('estimated_return', new Date().toISOString().split('T')[0])
-      .order('estimated_return', { ascending: true }),
-    supabase.from('job_cards')
-      .select('id, job_number, status, complaint, created_at, customers(full_name), vehicles(registration)')
-      .order('created_at', { ascending: false })
-      .limit(6),
-  ])
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
@@ -106,9 +72,9 @@ export default async function DashboardPage() {
 
       {/* ── KPI Stats ───────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-        <StatCard title="Cars In Service" value={carsInService ?? 0} icon={Car} color="blue" subtitle="Currently in workshop" />
-        <StatCard title="Pending Jobs" value={pendingJobs ?? 0} icon={Clock} color="orange" subtitle="Awaiting start" />
-        <StatCard title="Low Stock Parts" value={lowStockCount ?? 0} icon={Package} color="amber" subtitle="Need reorder" />
+        <StatCard title="Cars In Service" value={stats.carsInService} icon={Car} color="blue" subtitle="Currently in workshop" />
+        <StatCard title="Pending Jobs" value={stats.pendingJobs} icon={Clock} color="orange" subtitle="Awaiting start" />
+        <StatCard title="Low Stock Parts" value={stats.lowStockCount} icon={Package} color="amber" subtitle="Need reorder" />
         <StatCard title="Overdue Returns" value={overdueJobs?.length ?? 0} icon={AlertTriangle} color={overdueJobs?.length ? 'red' : 'green'} subtitle="Past estimated date" />
       </div>
 
@@ -166,7 +132,7 @@ export default async function DashboardPage() {
                 <CalendarClock className="w-6 h-6 text-slate-200 mx-auto mb-2" />
                 <p className="text-xs text-slate-400">No upcoming returns scheduled</p>
               </div>
-            ) : upcomingJobs?.map((job: any) => (
+            ) : upcomingJobs?.map(job => (
               <Link
                 key={job.id}
                 href={`/job-cards/${job.id}`}
@@ -212,7 +178,7 @@ export default async function DashboardPage() {
                 <AlertTriangle className="w-6 h-6 text-slate-200 mx-auto mb-2" />
                 <p className="text-xs text-slate-400">No overdue jobs — great work!</p>
               </div>
-            ) : overdueJobs?.slice(0, 5).map((job: any) => (
+            ) : overdueJobs?.slice(0, 5).map(job => (
               <Link
                 key={job.id}
                 href={`/job-cards/${job.id}`}
@@ -268,7 +234,7 @@ export default async function DashboardPage() {
                   </td>
                 </tr>
               )}
-              {recentJobs?.map((job: any) => (
+              {recentJobs?.map(job => (
                 <tr key={job.id} className="hover:bg-slate-50/70 transition-colors">
                   <td className="px-4 py-3">
                     <Link href={`/job-cards/${job.id}`} className="text-xs text-blue-600 hover:text-blue-700 hover:underline font-semibold">

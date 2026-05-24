@@ -1,27 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase/server'
 import ExcelJS from 'exceljs'
+import { getSessionUser } from '@/lib/auth'
+import { getJobExportData } from '@/lib/data'
 
 export async function GET(req: NextRequest) {
+  const user = await getSessionUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { searchParams } = req.nextUrl
   const format = searchParams.get('format') ?? 'excel'
   const from = searchParams.get('from')
   const to = searchParams.get('to')
 
-  const supabase = await createServiceClient()
-
-  let query = supabase
-    .from('repair_records')
-    .select(`
-      *, vehicles(registration, make, model), customers(full_name, phone),
-      job_cards(job_number, complaint, labour_cost, total_parts_cost, job_card_parts(quantity_used, unit_cost, parts(name)))
-    `)
-    .order('completed_at', { ascending: false })
-
-  if (from) query = query.gte('completed_at', from)
-  if (to) query = query.lte('completed_at', to + 'T23:59:59')
-
-  const { data: records } = await query
+  const records = await getJobExportData({ from, to })
 
   if (format === 'excel') {
     const wb = new ExcelJS.Workbook()
@@ -48,7 +41,7 @@ export async function GET(req: NextRequest) {
     ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } }
     ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
 
-    records?.forEach((r: any) => {
+    records.forEach(r => {
       ws.addRow({
         job_number: r.job_cards?.job_number,
         completed_at: new Date(r.completed_at).toLocaleDateString('en-KE'),
@@ -75,7 +68,7 @@ export async function GET(req: NextRequest) {
   }
 
   // PDF: simple HTML → print approach (client handles print)
-  const rows = records?.map((r: any) => `
+  const rows = records.map(r => `
     <tr>
       <td>${r.job_cards?.job_number ?? ''}</td>
       <td>${new Date(r.completed_at).toLocaleDateString('en-KE')}</td>
@@ -91,7 +84,7 @@ export async function GET(req: NextRequest) {
     th,td{border:1px solid #ccc;padding:4px 6px;text-align:left}th{background:#1e3a5f;color:#fff}
     tr:nth-child(even){background:#f8fafc}h1{font-size:16px}p{font-size:11px;color:#666}</style></head>
     <body><h1>Azim Motors — Job History Report</h1>
-    <p>Generated: ${new Date().toLocaleDateString('en-KE')} | Total records: ${records?.length}</p>
+    <p>Generated: ${new Date().toLocaleDateString('en-KE')} | Total records: ${records.length}</p>
     <table><thead><tr><th>Job #</th><th>Date</th><th>Customer</th><th>Vehicle</th><th>Work Done</th><th>Mechanic</th><th>Total</th></tr></thead>
     <tbody>${rows}</tbody></table></body></html>`
 

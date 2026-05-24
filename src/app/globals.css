@@ -1,111 +1,106 @@
 @import "tailwindcss";
 
-/* Enable class-based dark mode for dark: prefix in Tailwind v4 */
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --sidebar-width: 224px;
+  --sidebar-width: 260px;
+}
+
+html,
+body {
+  min-height: 100%;
 }
 
 body {
-  /* Inter loaded via next/font — only add rendering hints here */
+  background:
+    radial-gradient(circle at top right, rgba(216, 111, 69, 0.18), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(31, 95, 89, 0.14), transparent 25%),
+    linear-gradient(180deg, #f8f4ec 0%, #f4efe7 42%, #f8f6f2 100%);
+  color: #152624;
+  font-family: Aptos, "Segoe UI", "Trebuchet MS", sans-serif;
   text-rendering: optimizeLegibility;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
-/* ── Scrollbar ─────────────────────────────────────────── */
+body::selection {
+  background: rgba(216, 111, 69, 0.18);
+}
+
+.font-display {
+  font-family: Bahnschrift, "Arial Narrow", Aptos, sans-serif;
+}
+
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
-
-/* ══════════════════════════════════════════════════════════
-   DARK MODE — global overrides
-   All html.dark overrides use !important so Tailwind utility
-   classes are transparently remapped without per-file changes.
-   ══════════════════════════════════════════════════════════ */
+::-webkit-scrollbar-thumb { background: #cfcdc4; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #b9b6ab; }
 
 html.dark {
   color-scheme: dark;
 }
 
 html.dark body {
-  background-color: #0f172a;
-  color: #f1f5f9;
+  background:
+    radial-gradient(circle at top right, rgba(216, 111, 69, 0.12), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(73, 145, 138, 0.12), transparent 22%),
+    linear-gradient(180deg, #091513 0%, #0d1c19 42%, #10221f 100%);
+  color: #eef5f2;
 }
 
-/* ── Backgrounds ─────────────────────────────────────────── */
-html.dark .bg-white      { background-color: #1e293b !important; }
-html.dark .bg-slate-50   { background-color: #0f172a !important; }
-html.dark .bg-slate-100  { background-color: #1e293b !important; }
-html.dark .bg-slate-200  { background-color: #334155 !important; }
-html.dark .bg-gray-50    { background-color: #1e293b !important; }
-html.dark .bg-gray-100   { background-color: #1e293b !important; }
-
-/* Subtle tinted icon badge backgrounds in dark */
-html.dark .bg-blue-50    { background-color: rgba(59,  130, 246, 0.15) !important; }
-html.dark .bg-orange-50  { background-color: rgba(249, 115,  22, 0.15) !important; }
-html.dark .bg-amber-50   { background-color: rgba(245, 158,  11, 0.15) !important; }
-html.dark .bg-red-50     { background-color: rgba(239,  68,  68, 0.15) !important; }
-html.dark .bg-emerald-50 { background-color: rgba( 16, 185, 129, 0.15) !important; }
-html.dark .bg-violet-50  { background-color: rgba(139,  92, 246, 0.15) !important; }
-
-/* ── Text ─────────────────────────────────────────────────── */
-html.dark .text-slate-900 { color: #f1f5f9 !important; }
-html.dark .text-slate-800 { color: #e2e8f0 !important; }
-html.dark .text-slate-700 { color: #cbd5e1 !important; }
-html.dark .text-slate-600 { color: #94a3b8 !important; }
-html.dark .text-slate-500 { color: #64748b !important; }
-html.dark .text-slate-400 { color: #475569 !important; }
-html.dark .text-slate-300 { color: #334155 !important; }
-
-/* ── Borders ──────────────────────────────────────────────── */
-html.dark .border-gray-200  { border-color: #1e293b !important; }
-html.dark .border-gray-100  { border-color: #1e293b !important; }
-html.dark .border-slate-200 { border-color: #334155 !important; }
-html.dark .border-slate-100 { border-color: #1e293b !important; }
-
-/* ── Dividers ─────────────────────────────────────────────── */
-html.dark .divide-gray-50  > * + * { border-color: #1e293b !important; }
-html.dark .divide-slate-50 > * + * { border-color: #1e293b !important; }
-html.dark .divide-slate-100 > * + * { border-color: #334155 !important; }
-
-/* ── Hover states ─────────────────────────────────────────── */
-html.dark .hover\:bg-slate-50:hover  { background-color: #1e293b !important; }
-html.dark .hover\:bg-slate-100:hover { background-color: #334155 !important; }
-
-/* ── Inputs / selects / textareas ─────────────────────────── */
+html.dark .bg-white      { background-color: rgba(14, 32, 29, 0.9) !important; }
+html.dark .bg-slate-50   { background-color: rgba(11, 27, 24, 0.92) !important; }
+html.dark .bg-slate-100  { background-color: rgba(17, 38, 34, 0.92) !important; }
+html.dark .bg-slate-200  { background-color: #223a36 !important; }
+html.dark .bg-gray-50    { background-color: rgba(11, 27, 24, 0.92) !important; }
+html.dark .bg-gray-100   { background-color: rgba(17, 38, 34, 0.92) !important; }
+html.dark .bg-blue-50    { background-color: rgba(65, 141, 159, 0.16) !important; }
+html.dark .bg-orange-50  { background-color: rgba(216, 111, 69, 0.16) !important; }
+html.dark .bg-amber-50   { background-color: rgba(214, 165, 90, 0.16) !important; }
+html.dark .bg-red-50     { background-color: rgba(216, 111, 69, 0.16) !important; }
+html.dark .bg-emerald-50 { background-color: rgba(31, 95, 89, 0.18) !important; }
+html.dark .bg-violet-50  { background-color: rgba(120, 132, 191, 0.16) !important; }
+html.dark .text-slate-900 { color: #eef5f2 !important; }
+html.dark .text-slate-800 { color: #e1ece8 !important; }
+html.dark .text-slate-700 { color: #c6d7d2 !important; }
+html.dark .text-slate-600 { color: #a7bbb5 !important; }
+html.dark .text-slate-500 { color: #7d948d !important; }
+html.dark .text-slate-400 { color: #657a74 !important; }
+html.dark .text-slate-300 { color: #49615b !important; }
+html.dark .border-gray-200  { border-color: #1f3733 !important; }
+html.dark .border-gray-100  { border-color: #172a27 !important; }
+html.dark .border-slate-200 { border-color: #27433e !important; }
+html.dark .border-slate-100 { border-color: #172a27 !important; }
+html.dark .divide-gray-50 > * + * { border-color: #172a27 !important; }
+html.dark .divide-slate-50 > * + * { border-color: #172a27 !important; }
+html.dark .divide-slate-100 > * + * { border-color: #27433e !important; }
+html.dark .hover\:bg-slate-50:hover { background-color: rgba(17, 38, 34, 0.92) !important; }
+html.dark .hover\:bg-slate-100:hover { background-color: #223a36 !important; }
 html.dark input:not([type='checkbox']):not([type='radio']),
 html.dark textarea,
 html.dark select {
-  background-color: #0f172a !important;
-  color: #f1f5f9    !important;
-  border-color: #334155 !important;
+  background-color: rgba(7, 18, 16, 0.9) !important;
+  color: #eef5f2 !important;
+  border-color: #27433e !important;
 }
 
 html.dark input::placeholder,
 html.dark textarea::placeholder {
-  color: #475569 !important;
+  color: #5e726c !important;
 }
 
-/* ── Table header rows ────────────────────────────────────── */
-html.dark thead tr { background-color: #1e293b !important; }
-
-/* ── Topbar ───────────────────────────────────────────────── */
+html.dark thead tr { background-color: rgba(14, 32, 29, 0.9) !important; }
 html.dark header.border-b {
-  background-color: #1e293b !important;
-  border-color: #1e293b    !important;
+  background-color: rgba(10, 22, 20, 0.82) !important;
+  border-color: #172a27 !important;
 }
 
-/* ── Sidebar ──────────────────────────────────────────────── */
 html.dark aside.border-r {
-  background-color: #0f172a !important;
-  border-color: #1e293b    !important;
+  background-color: rgba(10, 22, 20, 0.92) !important;
+  border-color: #172a27 !important;
 }
 
-/* ── Cards ────────────────────────────────────────────────── */
-html.dark .rounded-xl.border  { border-color: #334155 !important; }
-html.dark .rounded-2xl.border { border-color: #1e293b !important; }
-
-/* ── Auth page ────────────────────────────────────────────── */
-html.dark .bg-slate-900  { background-color: #020617 !important; }
+html.dark .rounded-xl.border,
+html.dark .rounded-2xl.border,
+html.dark .rounded-\[28px\].border {
+  border-color: #27433e !important;
+}

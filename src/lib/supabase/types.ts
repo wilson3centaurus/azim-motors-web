@@ -106,6 +106,7 @@ export interface JobCard {
   vehicles?: Vehicle
   customers?: Customer
   mechanic?: UserProfile
+  job_card_parts?: JobCardPart[]
 }
 
 export interface JobCardPart {

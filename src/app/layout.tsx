@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Toaster } from 'sonner'
 import './globals.css'
 import { ThemeProvider } from '@/lib/theme'
-
-const inter = Inter({ subsets: ['latin'], display: 'swap' })
 
 export const metadata: Metadata = {
   title: 'Azim Motors',
@@ -13,9 +11,21 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
-      <body className={`h-full bg-slate-50 text-slate-900 ${inter.className}`}>
+      <body className="h-full bg-slate-50 text-slate-900">
         <ThemeProvider>
           {children}
+          <Toaster
+            position="top-right"
+            closeButton
+            richColors
+            toastOptions={{
+              classNames: {
+                toast: 'rounded-2xl border border-white/70 bg-white/95 shadow-xl',
+                title: 'font-semibold',
+                description: 'text-sm',
+              },
+            }}
+          />
         </ThemeProvider>
       </body>
     </html>

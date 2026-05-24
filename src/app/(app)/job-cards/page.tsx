@@ -1,30 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { formatDate, JOB_STATUS_COLORS, cn } from '@/lib/utils'
 import { Plus } from 'lucide-react'
+import { listJobCards } from '@/lib/data'
 
 export default async function JobCardsPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string }> }) {
   const params = await searchParams
-  const supabase = await createClient()
-
-  let query = supabase
-    .from('job_cards')
-    .select(`
-      id, job_number, status, complaint, date_received, estimated_return, labour_cost, total_parts_cost,
-      customers(full_name, phone),
-      vehicles(registration, make, model),
-      mechanic:assigned_mechanic(full_name)
-    `)
-    .order('created_at', { ascending: false })
-
-  if (params.status && params.status !== 'all') {
-    query = query.eq('status', params.status)
-  }
-  if (params.q) {
-    query = query.or(`job_number.ilike.%${params.q}%,complaint.ilike.%${params.q}%`)
-  }
-
-  const { data: jobs } = await query
+  const jobs = await listJobCards({ status: params.status, q: params.q })
 
   const statuses = ['all', 'Pending', 'In Progress', 'Completed', 'Cancelled']
 
@@ -81,7 +62,7 @@ export default async function JobCardsPage({ searchParams }: { searchParams: Pro
                   <td colSpan={7} className="px-5 py-10 text-center text-slate-400">No job cards found.</td>
                 </tr>
               )}
-              {jobs?.map((job: any) => (
+              {jobs?.map(job => (
                 <tr key={job.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 sm:px-5 py-3">
                     <Link href={`/job-cards/${job.id}`} className="text-blue-600 hover:underline font-medium">

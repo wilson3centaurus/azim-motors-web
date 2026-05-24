@@ -1,34 +1,15 @@
-import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { formatDate, formatCurrency, JOB_STATUS_COLORS, cn } from '@/lib/utils'
 import { JobCardActions } from './job-card-actions'
 import { PartsSection } from './parts-section'
+import { getJobCardDetail } from '@/lib/data'
 
 export default async function JobCardDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-
-  const { data: job } = await supabase
-    .from('job_cards')
-    .select(`
-      *,
-      customers(*),
-      vehicles(*),
-      mechanic:assigned_mechanic(id, full_name, phone),
-      creator:created_by(full_name),
-      job_card_parts(*, parts(name, part_number))
-    `)
-    .eq('id', id)
-    .single()
+  const { job, mechanics } = await getJobCardDetail(id)
 
   if (!job) notFound()
-
-  const { data: mechanics } = await supabase
-    .from('user_profiles')
-    .select('id, full_name, phone')
-    .eq('role', 'mechanic')
-    .eq('is_active', true)
 
   return (
     <div className="p-4 sm:p-6 max-w-4xl space-y-4 sm:space-y-5">

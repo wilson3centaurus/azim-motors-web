@@ -1,18 +1,12 @@
-import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { formatDate, JOB_STATUS_COLORS, cn } from '@/lib/utils'
 import { ReturnCalendar } from './return-calendar'
+import { getReturnDatesData } from '@/lib/data'
+import type { JobStatus } from '@/lib/supabase/types'
 
 export default async function ReturnDatesPage() {
-  const supabase = await createClient()
   const today = new Date().toISOString().split('T')[0]
-
-  const { data: jobs } = await supabase
-    .from('job_cards')
-    .select(`id, job_number, status, estimated_return, customers(full_name), vehicles(registration, make, model)`)
-    .not('status', 'in', '("Completed","Cancelled")')
-    .not('estimated_return', 'is', null)
-    .order('estimated_return', { ascending: true })
+  const jobs = await getReturnDatesData()
 
   const overdue = jobs?.filter(j => j.estimated_return! < today) ?? []
   const todayJobs = jobs?.filter(j => j.estimated_return === today) ?? []
@@ -20,9 +14,9 @@ export default async function ReturnDatesPage() {
 
   const calendarEvents = jobs?.map(j => ({
     id: j.id,
-    title: `${(j as any).vehicles?.registration} — ${(j as any).customers?.full_name}`,
+    title: `${j.vehicles?.registration} — ${j.customers?.full_name}`,
     date: j.estimated_return!,
-    status: j.status,
+    status: j.status as JobStatus,
     jobNumber: j.job_number,
   })) ?? []
 
@@ -35,7 +29,7 @@ export default async function ReturnDatesPage() {
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="text-sm font-semibold text-red-800 mb-2">⚠ {overdue.length} Overdue {overdue.length === 1 ? 'Job' : 'Jobs'}</p>
           <div className="space-y-1">
-            {overdue.map((j: any) => (
+            {overdue.map(j => (
               <Link key={j.id} href={`/job-cards/${j.id}`} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-3 text-sm text-red-700 hover:underline">
                 <span className="truncate">{j.job_number} · {j.vehicles?.registration} · {j.customers?.full_name}</span>
                 <span className="font-medium shrink-0">Due {formatDate(j.estimated_return)}</span>
@@ -55,7 +49,7 @@ export default async function ReturnDatesPage() {
             <h2 className="font-semibold text-orange-800">Due Today ({todayJobs.length})</h2>
           </div>
           <div className="divide-y divide-slate-50">
-            {todayJobs.map((j: any) => (
+              {todayJobs.map(j => (
               <Link key={j.id} href={`/job-cards/${j.id}`} className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 hover:bg-slate-50 transition-colors">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-900 truncate">{j.job_number} · {j.vehicles?.registration}</p>
@@ -77,7 +71,7 @@ export default async function ReturnDatesPage() {
         </div>
         <div className="divide-y divide-slate-50">
           {upcoming.length === 0 && <p className="px-5 py-4 text-sm text-slate-400">No upcoming returns.</p>}
-          {upcoming.map((j: any) => (
+          {upcoming.map(j => (
             <Link key={j.id} href={`/job-cards/${j.id}`} className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 hover:bg-slate-50 transition-colors">
               <div className="min-w-0">
                 <p className="text-sm font-medium text-slate-900 truncate">{j.job_number} · {j.vehicles?.registration}</p>

@@ -1,16 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { formatDate, formatCurrency } from '@/lib/utils'
+import { getJobCardPrintData } from '@/lib/data'
 
 export default async function PrintJobCardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-
-  const { data: job } = await supabase
-    .from('job_cards')
-    .select(`*, customers(*), vehicles(*), mechanic:assigned_mechanic(full_name), job_card_parts(*, parts(name, part_number))`)
-    .eq('id', id)
-    .single()
+  const { job } = await getJobCardPrintData(id)
 
   if (!job) notFound()
 
@@ -76,7 +70,7 @@ export default async function PrintJobCardPage({ params }: { params: Promise<{ i
               </tr>
             </thead>
             <tbody>
-              {job.job_card_parts.map((p: any) => (
+              {job.job_card_parts.map(p => (
                 <tr key={p.id} className="border-b border-slate-100">
                   <td className="py-1">{p.parts?.name}</td>
                   <td className="text-right py-1">{p.quantity_used}</td>

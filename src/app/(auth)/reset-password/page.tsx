@@ -1,55 +1,78 @@
 'use client'
 
-import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
+import { Alert } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { resetPasswordAction } from '@/lib/actions'
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [loading, startTransition] = useTransition()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setLoading(true)
-    const supabase = createClient()
-    await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/update-password`,
+    setMessage('')
+    setError('')
+    startTransition(async () => {
+      const result = await resetPasswordAction({ email, password, confirm })
+      if (!result.ok) {
+        setError(result.message)
+        return
+      }
+
+      setMessage(result.message)
+      setPassword('')
+      setConfirm('')
     })
-    setSent(true)
-    setLoading(false)
   }
 
   return (
     <div className="w-full max-w-md">
-      <div className="bg-white rounded-2xl shadow-2xl p-8">
-        <h1 className="text-xl font-bold text-slate-900 mb-2">Reset password</h1>
+      <div className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_32px_90px_-48px_rgba(21,38,36,0.55)] sm:p-8">
+        <h1 className="font-display text-2xl font-bold text-slate-900 mb-2">Reset password</h1>
         <p className="text-slate-500 text-sm mb-6">
-          Enter your email and we&apos;ll send a reset link.
+          This local version resets the password directly inside the workstation database.
         </p>
-        {sent ? (
-          <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 text-sm">
-            Check your email for the password reset link.
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              placeholder="you@azimmotors.com"
-              className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg text-sm"
-            >
-              {loading ? 'Sending...' : 'Send reset link'}
-            </button>
-          </form>
-        )}
+        {message && <Alert variant="success" className="mb-4">{message}</Alert>}
+        {error && <Alert variant="error" className="mb-4">{error}</Alert>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            id="reset-email"
+            type="email"
+            label="Email"
+            value={email}
+            onChange={event => setEmail(event.target.value)}
+            required
+            placeholder="you@azimmotors.com"
+          />
+          <Input
+            id="reset-password"
+            type="password"
+            label="New Password"
+            value={password}
+            onChange={event => setPassword(event.target.value)}
+            required
+            placeholder="At least 8 characters"
+          />
+          <Input
+            id="reset-confirm"
+            type="password"
+            label="Confirm Password"
+            value={confirm}
+            onChange={event => setConfirm(event.target.value)}
+            required
+            placeholder="Repeat the new password"
+          />
+          <Button type="submit" loading={loading} className="w-full">
+            Reset password
+          </Button>
+        </form>
         <Link href="/login" className="block text-center text-sm text-blue-600 hover:underline mt-4">
           Back to sign in
         </Link>

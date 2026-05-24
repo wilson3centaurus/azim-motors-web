@@ -1,22 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { listCustomers } from '@/lib/data'
 
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const params = await searchParams
-  const supabase = await createClient()
-
-  let query = supabase
-    .from('customers')
-    .select('*, vehicles(id)')
-    .order('full_name')
-
-  if (params.q) {
-    query = query.or(`full_name.ilike.%${params.q}%,phone.ilike.%${params.q}%,email.ilike.%${params.q}%`)
-  }
-
-  const { data: customers } = await query
+  const customers = await listCustomers(params.q)
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
@@ -50,7 +39,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
               {customers?.length === 0 && (
                 <tr><td colSpan={5} className="px-5 py-10 text-center text-slate-400">No customers found.</td></tr>
               )}
-              {customers?.map((c: any) => (
+              {customers?.map(c => (
                 <tr key={c.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 sm:px-5 py-3">
                     <Link href={`/customers/${c.id}`} className="font-medium text-blue-600 hover:underline">{c.full_name}</Link>

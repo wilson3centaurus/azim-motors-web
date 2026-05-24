@@ -35,10 +35,10 @@ export function timeAgo(date: string | Date) {
 }
 
 export const JOB_STATUS_COLORS = {
-  'Pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  'In Progress': 'bg-blue-100 text-blue-800 border-blue-200',
-  'Completed': 'bg-green-100 text-green-800 border-green-200',
-  'Cancelled': 'bg-gray-100 text-gray-600 border-gray-200',
+  'Pending': 'bg-[#fff6df] text-[#996019] border-[#ead7b9]',
+  'In Progress': 'bg-[#e8f6f3] text-[#1f5f59] border-[#bfddd7]',
+  'Completed': 'bg-[#edf8f1] text-[#22714d] border-[#c7e2d0]',
+  'Cancelled': 'bg-[#f1efeb] text-[#716a61] border-[#ddd7cf]',
 } as const
 
 export const ROLE_LABELS = {
@@ -46,3 +46,8 @@ export const ROLE_LABELS = {
   mechanic: 'Mechanic',
   receptionist: 'Receptionist',
 } as const
+
+export function fieldErrorText(error?: string[] | string) {
+  if (!error) return undefined
+  return Array.isArray(error) ? error[0] : error
+}

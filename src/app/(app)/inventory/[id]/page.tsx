@@ -1,18 +1,12 @@
-import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { formatCurrency, formatDateTime, cn } from '@/lib/utils'
 import { PartEditForm } from './part-edit-form'
+import { getPartDetail } from '@/lib/data'
 
 export default async function PartDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-
-  const [{ data: part }, { data: movements }, { data: suppliers }] = await Promise.all([
-    supabase.from('parts').select('*, suppliers(name)').eq('id', id).single(),
-    supabase.from('stock_movements').select('*').eq('part_id', id).order('created_at', { ascending: false }).limit(20),
-    supabase.from('suppliers').select('id, name').order('name'),
-  ])
+  const { part, movements, suppliers } = await getPartDetail(id)
 
   if (!part) notFound()
 
