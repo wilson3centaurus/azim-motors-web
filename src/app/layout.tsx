@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: 'Hazim Motors',
   description: 'Garage Management System',
   applicationName: 'Hazim Motors',
-  manifest: '/manifest.webmanifest',
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
