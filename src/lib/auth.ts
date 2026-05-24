@@ -1,14 +1,17 @@
 import { compare } from 'bcryptjs'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { queryOne } from '@/lib/db'
+import { ensureRuntimeDefaultAdminCredentials, queryAll, queryOne } from '@/lib/db'
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions, verifySessionToken } from '@/lib/session'
 import type { UserRole } from '@/lib/supabase/types'
+import { normalizePhone } from '@/lib/utils'
 
 type UserRow = {
   id: string
   email: string
   password_hash: string
+  pin_hash: string | null
+  password_login_enabled: number
   full_name: string
   role: UserRole
   phone: string | null
@@ -26,6 +29,8 @@ export type SessionUser = {
   phone: string | null
   avatar_url: string | null
   is_active: boolean
+  has_pin: boolean
+  password_login_enabled: boolean
   created_at: string
   updated_at: string
 }
@@ -40,9 +45,36 @@ function mapUser(row: UserRow | null): SessionUser | null {
     phone: row.phone,
     avatar_url: row.avatar_url,
     is_active: Boolean(row.is_active),
+    has_pin: Boolean(row.pin_hash),
+    password_login_enabled: Boolean(row.password_login_enabled),
     created_at: row.created_at,
     updated_at: row.updated_at,
   }
+}
+
+function isDefaultAdminRecoveryUser(row: Pick<UserRow, 'email' | 'phone' | 'full_name' | 'role'>) {
+  const desiredEmail = (process.env.AZIM_LOCAL_ADMIN_EMAIL ?? 'admin@admin.com').toLowerCase()
+  const desiredPhone = process.env.AZIM_LOCAL_ADMIN_PHONE ?? '0770000000'
+
+  return row.role === 'admin' && (
+    row.full_name === 'Azim Motors Admin'
+    || row.email.toLowerCase() === desiredEmail
+    || row.phone === desiredPhone
+  )
+}
+
+async function findUserByIdentifier(identifier: string) {
+  const trimmed = identifier.trim()
+  const normalizedPhone = normalizePhone(trimmed)
+  const candidates = await queryAll<UserRow>(
+    'SELECT * FROM users WHERE is_active = 1 AND (lower(email) = lower(?) OR phone = ?)',
+    [trimmed, trimmed],
+  )
+
+  return candidates.find(candidate => {
+    if (candidate.email.toLowerCase() === trimmed.toLowerCase()) return true
+    return normalizePhone(candidate.phone) === normalizedPhone
+  }) ?? await queryOne<UserRow>('SELECT * FROM users WHERE lower(email) = lower(?)', [trimmed])
 }
 
 export async function getUserById(id: string) {
@@ -70,16 +102,31 @@ export async function requireUser() {
 }
 
 export async function requireAdmin() {
-  const user = await requireUser()
-  if (user.role !== 'admin') redirect('/settings')
+  const user = await requireAnyRole(['admin'], '/settings')
   return user
 }
 
-export async function authenticateUser(email: string, password: string) {
-  const row = await queryOne<UserRow>('SELECT * FROM users WHERE lower(email) = lower(?)', [email.trim()])
+export async function requireAnyRole(roles: UserRole[], fallback = '/dashboard') {
+  const user = await requireUser()
+  if (!roles.includes(user.role)) redirect(fallback)
+  return user
+}
+
+export async function authenticateUser(identifier: string, secret: string, options?: { usePassword?: boolean }) {
+  await ensureRuntimeDefaultAdminCredentials()
+  const usePassword = options?.usePassword ?? false
+  const row = await findUserByIdentifier(identifier)
+
   if (!row || !row.is_active) return null
 
-  const matches = await compare(password, row.password_hash)
+  const credentialHash = usePassword ? row.password_hash : row.pin_hash
+  if (!credentialHash) return null
+
+  if (usePassword && !row.password_login_enabled && !isDefaultAdminRecoveryUser(row)) {
+    return null
+  }
+
+  const matches = await compare(secret, credentialHash)
   if (!matches) return null
   return mapUser(row)
 }

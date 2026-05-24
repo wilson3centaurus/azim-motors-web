@@ -4,14 +4,14 @@ import './globals.css'
 import { ThemeProvider } from '@/lib/theme'
 
 export const metadata: Metadata = {
-  title: 'Azim Motors',
+  title: 'Hazim Motors',
   description: 'Garage Management System',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
-      <body className="h-full bg-slate-50 text-slate-900">
+      <body className="h-full bg-[transparent] text-[var(--text-strong)]">
         <ThemeProvider>
           {children}
           <Toaster
@@ -20,9 +20,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             richColors
             toastOptions={{
               classNames: {
-                toast: 'rounded-2xl border border-white/70 bg-white/95 shadow-xl',
-                title: 'font-semibold',
-                description: 'text-sm',
+                toast: 'rounded-2xl border border-[var(--line-soft)] bg-[var(--surface-raised)] text-[var(--text-strong)] shadow-xl backdrop-blur-sm',
+                title: 'font-semibold text-[var(--text-strong)]',
+                description: 'text-sm text-[var(--text-muted)]',
               },
             }}
           />

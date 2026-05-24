@@ -8,22 +8,41 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const customers = await listCustomers(params.q)
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+    <div className="space-y-4 p-2.5 sm:space-y-5 sm:p-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-slate-900">Customers</h1>
           <p className="text-sm text-slate-500 mt-0.5">{customers?.length ?? 0} registered customers</p>
         </div>
-        <Link href="/customers/new" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shrink-0">
+        <Link href="/customers/new" className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700 sm:w-auto sm:shrink-0 sm:justify-start sm:py-2">
           <Plus className="w-4 h-4" /> New Customer
         </Link>
       </div>
 
       <form method="GET">
-        <input name="q" defaultValue={params.q} placeholder="Search by name, phone, or email..." className="w-full sm:max-w-md px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <input name="q" defaultValue={params.q} placeholder="Search by name, phone, or email..." className="w-full rounded-lg border border-slate-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 sm:max-w-md sm:py-2.5 sm:text-sm" />
       </form>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="space-y-3 md:hidden">
+        {customers?.length === 0 && <div className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-slate-400">No customers found.</div>}
+        {customers?.map(c => (
+          <Link key={c.id} href={`/customers/${c.id}`} className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:bg-slate-50">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-blue-600">{c.full_name}</p>
+                <p className="mt-1 text-sm text-slate-700">{c.phone}</p>
+                <p className="mt-1 truncate text-xs text-slate-500">{c.email ?? 'No email'}</p>
+              </div>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                {c.vehicles?.length ?? 0} vehicles
+              </span>
+            </div>
+            <p className="mt-4 text-xs text-slate-500">Customer since {formatDate(c.created_at)}</p>
+          </Link>
+        ))}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>

@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
             value={email}
             onChange={event => setEmail(event.target.value)}
             required
-            placeholder="you@azimmotors.com"
+            placeholder="you@hazimmotors.com"
           />
           <Input
             id="reset-password"

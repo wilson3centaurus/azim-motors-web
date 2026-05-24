@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [secret, setSecret] = useState('')
+  const [useRecovery, setUseRecovery] = useState(false)
+  const [identifier, setIdentifier] = useState('')
   const [error, setError] = useState('')
   const [loading, startTransition] = useTransition()
 
@@ -22,7 +23,7 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ identifier, secret, usePassword: useRecovery }),
       })
 
       const result = await response.json()
@@ -46,53 +47,51 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="font-display text-3xl font-bold text-slate-900">Welcome back</h1>
-          <p className="mt-2 text-sm text-slate-500">Sign in to the local Azim Motors workshop system.</p>
-        </div>
-
-        <div className="mb-5 rounded-2xl border border-[#ead7b9] bg-[#fff7e8] px-4 py-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#915b19]">Local Admin</p>
-          <div className="flex items-center justify-between gap-3">
-            <div className="text-xs leading-relaxed text-[#7a5120]">
-              <span className="rounded bg-white/80 px-1.5 py-0.5 font-mono">admin@admin.com</span>
-              {' / '}
-              <span className="rounded bg-white/80 px-1.5 py-0.5 font-mono">admin1234</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => { setEmail('admin@admin.com'); setPassword('admin1234') }}
-              className="shrink-0 rounded-xl bg-[#d86f45] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#c65f39]"
-            >
-              Fill
-            </button>
-          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && <Alert variant="error">{error}</Alert>}
 
           <Input
-            id="login-email"
-            type="email"
-            label="Email address"
-            value={email}
-            onChange={event => setEmail(event.target.value)}
+            id="login-identifier"
+            type={useRecovery ? 'text' : 'tel'}
+            inputMode={useRecovery ? undefined : 'tel'}
+            label={useRecovery ? 'Phone number or email' : 'Phone number'}
+            value={identifier}
+            onChange={event => setIdentifier(event.target.value)}
             required
-            placeholder="you@azimmotors.com"
+            placeholder={useRecovery ? 'admin@admin.com' : '0770000000'}
           />
 
           <Input
             id="login-password"
             type="password"
-            label="Password"
-            value={password}
-            onChange={event => setPassword(event.target.value)}
+            inputMode={useRecovery ? undefined : 'numeric'}
+            maxLength={useRecovery ? undefined : 4}
+            pattern={useRecovery ? undefined : '[0-9]*'}
+            label={useRecovery ? 'Recovery Password' : '4-digit PIN'}
+            value={secret}
+            onChange={event => setSecret(useRecovery ? event.target.value : event.target.value.replace(/\D/g, '').slice(0, 4))}
             required
-            placeholder="••••••••"
+            placeholder={useRecovery ? 'Recovery password' : '••••'}
           />
 
           <Button type="submit" loading={loading} className="w-full">
-            Sign in
+            {useRecovery ? 'Use Recovery Access' : 'Sign in'}
           </Button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setUseRecovery(current => !current)
+              setSecret('')
+              setIdentifier('')
+              setError('')
+            }}
+            className="w-full text-sm font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
+          >
+            {useRecovery ? 'Back to PIN sign-in' : 'Forgot PIN or first sign-in? Use recovery access'}
+          </button>
         </form>
       </div>
     </div>

@@ -21,9 +21,49 @@ function dateIsTodayOrLater(date: string) {
 }
 
 export const loginSchema = z.object({
-  email: z.email('Enter a valid email address.'),
-  password: z.string().min(6, 'Password must be at least 6 characters.'),
+  identifier: z.string().trim().min(3, 'Enter a phone number or email address.'),
+  secret: z.string().trim().min(1, 'Enter your PIN or password.'),
+  usePassword: z.boolean().optional().default(false),
+}).superRefine((values, ctx) => {
+  if (!values.usePassword && !phoneRegex.test(values.identifier)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['identifier'],
+      message: 'Enter a valid phone number.',
+    })
+  }
+
+  if (!values.usePassword && !/^\d{4}$/.test(values.secret)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['secret'],
+      message: 'Enter your 4-digit PIN.',
+    })
+  }
 })
+
+const pinSchema = z.string().trim().regex(/^\d{4}$/, 'PIN must be exactly 4 digits.')
+
+export const setPinSchema = z
+  .object({
+    pin: pinSchema,
+    confirm: z.string().trim(),
+  })
+  .refine(values => values.pin === values.confirm, {
+    path: ['confirm'],
+    message: 'PINs do not match.',
+  })
+
+export const changePinSchema = z
+  .object({
+    current: pinSchema,
+    next: pinSchema,
+    confirm: z.string().trim(),
+  })
+  .refine(values => values.next === values.confirm, {
+    path: ['confirm'],
+    message: 'PINs do not match.',
+  })
 
 export const customerSchema = z.object({
   full_name: z.string().trim().min(2, 'Full name is required.'),
@@ -54,8 +94,20 @@ export const partSchema = z.object({
   location: optionalTrimmed(),
 })
 
+export const createPartSchema = z.object({
+  name: z.string().trim().min(2, 'Part name is required.'),
+  part_number: optionalTrimmed(),
+  description: optionalTrimmed(),
+  quantity: z.number().min(0, 'Quantity cannot be negative.'),
+  reorder_level: z.number().min(0, 'Reorder level cannot be negative.').optional().default(0),
+  unit_cost: z.number().min(0, 'Unit cost cannot be negative.'),
+  selling_price: z.number().min(0, 'Selling price cannot be negative.').nullable(),
+  supplier_id: optionalTrimmed(),
+  location: optionalTrimmed(),
+})
+
 export const vehicleSchema = z.object({
-  registration: z.string().trim().min(2, 'Registration is required.'),
+  registration: optionalTrimmed(),
   make: z.string().trim().min(2, 'Make is required.'),
   model: z.string().trim().min(1, 'Model is required.'),
   year: z
@@ -68,9 +120,11 @@ export const vehicleSchema = z.object({
 })
 
 export const jobCardDraftSchema = z.object({
-  complaint: z.string().trim().min(8, 'Describe the complaint in a bit more detail.'),
+  service_type: z.string().trim().min(2, 'Select the main service requested.'),
+  complaint: z.string().trim().min(3, 'Enter the main complaint.'),
   assigned_mechanic: optionalTrimmed(),
   estimated_return: optionalDate().refine(value => !value || dateIsTodayOrLater(value), 'Estimated return cannot be in the past.'),
+  quoted_amount: z.number().min(0, 'Quoted amount cannot be negative.'),
   notes: optionalTrimmed(),
 })
 
@@ -96,10 +150,13 @@ export const passwordSchema = z
 
 export const jobUpdateSchema = z.object({
   status: z.enum(['Pending', 'In Progress', 'Completed', 'Cancelled']),
+  service_type: z.string().trim().min(2, 'Select the main service requested.'),
   assigned_mechanic: optionalTrimmed(),
   diagnosis: optionalTrimmed(),
   work_done: optionalTrimmed(),
   labour_cost: z.number().min(0, 'Labour cost cannot be negative.'),
+  quoted_amount: z.number().min(0, 'Quoted amount cannot be negative.'),
+  payment_status: z.enum(['Unpaid', 'Deposit Paid', 'Paid']),
   estimated_return: optionalDate().refine(value => !value || dateIsTodayOrLater(value), 'Estimated return cannot be in the past.'),
   notes: optionalTrimmed(),
 })

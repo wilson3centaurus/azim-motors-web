@@ -10,7 +10,7 @@ export function MobileMenuButton() {
       type="button"
       onClick={toggle}
       aria-label="Open menu"
-      className="lg:hidden p-1.5 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+      className="rounded-xl p-2 text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-card)] hover:text-[var(--text-strong)] focus:outline-none focus:ring-2 focus:ring-[#1f5f59] focus:ring-offset-1 focus:ring-offset-transparent lg:hidden"
     >
       <Menu className="w-5 h-5" />
     </button>

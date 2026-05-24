@@ -6,8 +6,8 @@ type Size = 'sm' | 'md' | 'lg'
 
 const variantClasses: Record<Variant, string> = {
   primary: 'bg-[#1f5f59] text-white hover:bg-[#184944] focus:ring-[#1f5f59]',
-  secondary: 'bg-white/90 text-slate-800 ring-1 ring-black/8 hover:bg-white focus:ring-[#1f5f59]',
-  ghost: 'bg-transparent text-slate-600 hover:bg-white/70 focus:ring-[#1f5f59]',
+  secondary: 'bg-[var(--surface-raised)] text-[var(--text-strong)] ring-1 ring-[var(--line)] hover:bg-[var(--surface-card)] focus:ring-[#1f5f59]',
+  ghost: 'bg-transparent text-[var(--text-base)] hover:bg-[var(--surface-card)] focus:ring-[#1f5f59]',
   danger: 'bg-[#b6452d] text-white hover:bg-[#933421] focus:ring-[#b6452d]',
 }
 

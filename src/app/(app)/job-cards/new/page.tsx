@@ -10,6 +10,9 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { createJobCardAction } from '@/lib/actions'
+import { displayVehicleRegistration } from '@/lib/utils'
+
+const SERVICE_TYPES = ['General Service', 'Engine Repair', 'Suspension', 'Brake Service', 'Electrical Diagnosis', 'Body Work', 'Tyres', 'Other']
 
 export default function NewJobCardPage() {
   const router = useRouter()
@@ -33,9 +36,11 @@ export default function NewJobCardPage() {
   // Step 3: Job details
   const [mechanics, setMechanics] = useState<UserProfile[]>([])
   const [form, setForm] = useState({
+    service_type: 'General Service',
     complaint: '',
     assigned_mechanic: '',
     estimated_return: '',
+    quoted_amount: '0',
     notes: '',
   })
 
@@ -61,6 +66,16 @@ export default function NewJobCardPage() {
     c.phone.includes(customerSearch)
   ), [customers, customerSearch])
 
+  function firstFieldError(errors?: Record<string, string[]>) {
+    if (!errors) return null
+    for (const messages of Object.values(errors)) {
+      if (messages && messages.length > 0) {
+        return messages[0]
+      }
+    }
+    return null
+  }
+
   async function handleSubmit() {
     setError('')
     startTransition(async () => {
@@ -73,13 +88,15 @@ export default function NewJobCardPage() {
           year: newVehicle.year ? parseInt(newVehicle.year, 10) : null,
         } : undefined,
         complaint: form.complaint,
+        service_type: form.service_type,
         assigned_mechanic: form.assigned_mechanic || null,
         estimated_return: form.estimated_return || null,
+        quoted_amount: Number(form.quoted_amount || 0),
         notes: form.notes,
       })
 
       if (!result.ok) {
-        setError(result.message)
+        setError(firstFieldError(result.errors) ?? result.message)
         return
       }
 
@@ -88,9 +105,9 @@ export default function NewJobCardPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-2xl">
+    <div className="max-w-2xl p-4 sm:p-6">
       <div className="mb-4 sm:mb-6">
-        <h1 className="text-lg sm:text-xl font-bold text-slate-900">New Job Card</h1>
+        <h1 className="text-lg font-bold text-slate-900 dark:text-[#eef5f2] sm:text-xl">New Job Card</h1>
         <div className="flex items-center gap-2 mt-3">
           {[1, 2, 3].map(s => (
             <div key={s} className="flex items-center gap-2">
@@ -98,13 +115,13 @@ export default function NewJobCardPage() {
               {s < 3 && <div className={`h-0.5 w-12 ${step > s ? 'bg-blue-600' : 'bg-slate-200'}`} />}
             </div>
           ))}
-          <span className="text-sm text-slate-500 ml-2">{step === 1 ? 'Customer' : step === 2 ? 'Vehicle' : 'Job Details'}</span>
+          <span className="ml-2 text-sm text-slate-500 dark:text-[#9eb5af]">{step === 1 ? 'Customer' : step === 2 ? 'Vehicle' : 'Job Details'}</span>
         </div>
       </div>
 
       {error && <Alert variant="error" className="mb-4">{error}</Alert>}
 
-      <Card className="space-y-4 p-4 sm:p-6">
+      <Card className="space-y-4 border-[#dfe9e4] bg-white/92 p-4 dark:border-[#27433e] dark:bg-[#102623]/92 sm:p-6">
         {/* Step 1: Customer */}
         {step === 1 && (
           <>
@@ -124,15 +141,15 @@ export default function NewJobCardPage() {
                   value={customerSearch}
                   onChange={e => setCustomerSearch(e.target.value)}
                 />
-                <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100 dark:border-[#27433e] dark:divide-[#1f3732]">
                   {filteredCustomers.map(c => (
                     <button
                       key={c.id}
                       onClick={() => setSelectedCustomer(c)}
-                      className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors ${selectedCustomer?.id === c.id ? 'bg-blue-50 border-l-2 border-blue-600' : ''}`}
+                      className={`w-full px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-[#122c27] ${selectedCustomer?.id === c.id ? 'border-l-2 border-blue-600 bg-blue-50 dark:bg-[#17342f]' : ''}`}
                     >
-                      <p className="text-sm font-medium text-slate-900">{c.full_name}</p>
-                      <p className="text-xs text-slate-500">{c.phone}</p>
+                      <p className="text-sm font-medium text-slate-900 dark:text-[#eef5f2]">{c.full_name}</p>
+                      <p className="text-xs text-slate-500 dark:text-[#8ea59f]">{c.phone}</p>
                     </button>
                   ))}
                 </div>
@@ -159,18 +176,18 @@ export default function NewJobCardPage() {
               </button>
             </div>
             {!createNewVehicle ? (
-              <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
-                {vehicles.length === 0 && <p className="px-4 py-3 text-sm text-slate-400">No vehicles for this customer. Add a new one.</p>}
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-200 divide-y divide-slate-100 dark:border-[#27433e] dark:divide-[#1f3732]">
+                {vehicles.length === 0 && <p className="px-4 py-3 text-sm text-slate-400 dark:text-[#8ea59f]">No vehicles for this customer. Add a new one.</p>}
                 {vehicles.map(v => (
-                  <button key={v.id} onClick={() => setSelectedVehicle(v)} className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors ${selectedVehicle?.id === v.id ? 'bg-blue-50 border-l-2 border-blue-600' : ''}`}>
-                    <p className="text-sm font-medium text-slate-900">{v.registration}</p>
-                    <p className="text-xs text-slate-500">{v.make} {v.model} {v.year}</p>
+                  <button key={v.id} onClick={() => setSelectedVehicle(v)} className={`w-full px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-[#122c27] ${selectedVehicle?.id === v.id ? 'border-l-2 border-blue-600 bg-blue-50 dark:bg-[#17342f]' : ''}`}>
+                    <p className="text-sm font-medium text-slate-900 dark:text-[#eef5f2]">{displayVehicleRegistration(v.registration)}</p>
+                    <p className="text-xs text-slate-500 dark:text-[#8ea59f]">{v.make} {v.model} {v.year}</p>
                   </button>
                 ))}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Input id="new-vehicle-registration" label="Registration *" value={newVehicle.registration} onChange={e => setNewVehicle(p => ({ ...p, registration: e.target.value }))} containerClassName="sm:col-span-2" />
+                <Input id="new-vehicle-registration" label="Licence Plate" hint="Leave blank if the vehicle has no plate yet." value={newVehicle.registration} onChange={e => setNewVehicle(p => ({ ...p, registration: e.target.value }))} containerClassName="sm:col-span-2" />
                 <Input id="new-vehicle-make" label="Make *" value={newVehicle.make} onChange={e => setNewVehicle(p => ({ ...p, make: e.target.value }))} />
                 <Input id="new-vehicle-model" label="Model *" value={newVehicle.model} onChange={e => setNewVehicle(p => ({ ...p, model: e.target.value }))} />
                 <Input id="new-vehicle-year" label="Year" value={newVehicle.year} onChange={e => setNewVehicle(p => ({ ...p, year: e.target.value }))} />
@@ -183,6 +200,12 @@ export default function NewJobCardPage() {
         {/* Step 3: Job Details */}
         {step === 3 && (
           <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Select label="Service Type" value={form.service_type} onChange={e => setForm(p => ({ ...p, service_type: e.target.value }))}>
+                {SERVICE_TYPES.map(service => <option key={service} value={service}>{service}</option>)}
+              </Select>
+              <Input id="job-quoted-amount" label="Quoted Amount (USD)" type="number" min="0" step="0.01" value={form.quoted_amount} onChange={e => setForm(p => ({ ...p, quoted_amount: e.target.value }))} prefix="$" />
+            </div>
             <div>
               <Textarea id="job-complaint" label="Problem / Complaint *" rows={4} value={form.complaint} onChange={e => setForm(p => ({ ...p, complaint: e.target.value }))} placeholder="Describe the issue..." />
             </div>
@@ -238,7 +261,7 @@ export default function NewJobCardPage() {
         ) : (
           <Button
             onClick={handleSubmit}
-            disabled={loading || !form.complaint}
+            disabled={loading || !form.complaint || !form.service_type}
             type="button"
             loading={loading}
           >

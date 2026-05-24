@@ -44,8 +44,23 @@ export const JOB_STATUS_COLORS = {
 export const ROLE_LABELS = {
   admin: 'Admin',
   mechanic: 'Mechanic',
+  salesperson: 'Salesperson',
   receptionist: 'Receptionist',
 } as const
+
+export function normalizePhone(value: string | null | undefined) {
+  if (!value) return ''
+  return value.replace(/[^\d+]/g, '')
+}
+
+export function isGeneratedRegistration(value: string | null | undefined) {
+  return Boolean(value && value.startsWith('UNREGISTERED-'))
+}
+
+export function displayVehicleRegistration(value: string | null | undefined) {
+  if (!value || isGeneratedRegistration(value)) return '—'
+  return value
+}
 
 export function fieldErrorText(error?: string[] | string) {
   if (!error) return undefined

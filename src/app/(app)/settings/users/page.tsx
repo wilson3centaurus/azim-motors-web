@@ -7,7 +7,7 @@ export default async function UsersPage() {
   const users = await listUsers()
 
   return (
-    <div className="p-6 max-w-3xl space-y-5">
+    <div className="max-w-6xl space-y-5 p-3 sm:p-6">
       <h1 className="text-xl font-bold text-slate-900">User Management</h1>
       <UsersAdmin users={users} />
     </div>

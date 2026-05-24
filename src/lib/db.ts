@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import type { Database, SqlJsStatic } from 'sql.js'
-import { hash } from 'bcryptjs'
+import { compare, hash } from 'bcryptjs'
 
 type SqlParam = string | number | null
 type SqlRow = object
@@ -17,8 +17,10 @@ const schema = `
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    pin_hash TEXT,
+    password_login_enabled INTEGER NOT NULL DEFAULT 1,
     full_name TEXT NOT NULL,
-    role TEXT NOT NULL CHECK (role IN ('admin', 'mechanic', 'receptionist')) DEFAULT 'mechanic',
+    role TEXT NOT NULL CHECK (role IN ('admin', 'mechanic', 'salesperson', 'receptionist')) DEFAULT 'mechanic',
     phone TEXT,
     avatar_url TEXT,
     is_active INTEGER NOT NULL DEFAULT 1,
@@ -96,6 +98,7 @@ const schema = `
     assigned_mechanic TEXT,
     created_by TEXT,
     status TEXT NOT NULL CHECK (status IN ('Pending', 'In Progress', 'Completed', 'Cancelled')) DEFAULT 'Pending',
+    service_type TEXT,
     complaint TEXT NOT NULL,
     diagnosis TEXT,
     work_done TEXT,
@@ -103,7 +106,10 @@ const schema = `
     estimated_return TEXT,
     actual_return TEXT,
     labour_cost REAL NOT NULL DEFAULT 0,
+    quoted_amount REAL NOT NULL DEFAULT 0,
     total_parts_cost REAL NOT NULL DEFAULT 0,
+    payment_status TEXT NOT NULL DEFAULT 'Unpaid',
+    customer_notification_sent INTEGER NOT NULL DEFAULT 0,
     notes TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
@@ -157,6 +163,33 @@ const schema = `
     FOREIGN KEY (part_id) REFERENCES parts(id) ON DELETE CASCADE,
     FOREIGN KEY (job_card_id) REFERENCES job_cards(id) ON DELETE SET NULL,
     FOREIGN KEY (performed_by) REFERENCES users(id) ON DELETE SET NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS sales (
+    id TEXT PRIMARY KEY,
+    sale_number TEXT NOT NULL UNIQUE,
+    customer_name TEXT,
+    customer_phone TEXT,
+    subtotal REAL NOT NULL DEFAULT 0,
+    discount_amount REAL NOT NULL DEFAULT 0,
+    total_amount REAL NOT NULL DEFAULT 0,
+    payment_method TEXT NOT NULL DEFAULT 'Cash',
+    notes TEXT,
+    sold_by TEXT,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (sold_by) REFERENCES users(id) ON DELETE SET NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS sale_items (
+    id TEXT PRIMARY KEY,
+    sale_id TEXT NOT NULL,
+    part_id TEXT NOT NULL,
+    quantity INTEGER NOT NULL CHECK (quantity > 0),
+    unit_price REAL NOT NULL,
+    line_total REAL NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
+    FOREIGN KEY (part_id) REFERENCES parts(id) ON DELETE RESTRICT
   );
 
   CREATE TABLE IF NOT EXISTS password_reset_tokens (
@@ -213,10 +246,101 @@ async function createState(): Promise<DatabaseState> {
   }
 
   db.run(schema)
+  migrateSchema(db)
   const state: DatabaseState = { sql, db, writeQueue: Promise.resolve() }
   await seedIfEmpty(state.db)
+  await ensureDefaultAdminCredentials(state.db)
+  seedInventoryIfEmpty(state.db)
   await persist(state.db)
   return state
+}
+
+function getTableColumns(db: Database, tableName: string) {
+  return selectAllFromDb<{ name: string }>(db, `PRAGMA table_info(${tableName})`).map(column => column.name)
+}
+
+function recreateUsersTableForRoles(db: Database) {
+  const createStatement = selectOneFromDb<{ sql: string }>(db, "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'")
+  if (createStatement?.sql?.includes("'salesperson'")) return
+
+  db.run('BEGIN')
+  try {
+    db.run('ALTER TABLE users RENAME TO users_legacy')
+    db.run(`
+      CREATE TABLE users (
+        id TEXT PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        pin_hash TEXT,
+        password_login_enabled INTEGER NOT NULL DEFAULT 1,
+        full_name TEXT NOT NULL,
+        role TEXT NOT NULL CHECK (role IN ('admin', 'mechanic', 'salesperson', 'receptionist')) DEFAULT 'mechanic',
+        phone TEXT,
+        avatar_url TEXT,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `)
+    db.run(`
+            INSERT INTO users (id, email, password_hash, pin_hash, password_login_enabled, full_name, role, phone, avatar_url, is_active, created_at, updated_at)
+            SELECT id, email, password_hash, NULL, 1, full_name,
+             CASE WHEN role = 'receptionist' THEN 'salesperson' ELSE role END,
+             phone, avatar_url, is_active, created_at, updated_at
+      FROM users_legacy
+    `)
+    db.run('DROP TABLE users_legacy')
+    db.run('COMMIT')
+  } catch (error) {
+    try {
+      db.run('ROLLBACK')
+    } catch {}
+    throw error
+  }
+}
+
+function migrateSchema(db: Database) {
+  recreateUsersTableForRoles(db)
+
+  const userColumns = new Set(getTableColumns(db, 'users'))
+  if (!userColumns.has('pin_hash')) db.run('ALTER TABLE users ADD COLUMN pin_hash TEXT')
+  if (!userColumns.has('password_login_enabled')) db.run('ALTER TABLE users ADD COLUMN password_login_enabled INTEGER NOT NULL DEFAULT 1')
+
+  const jobCardColumns = new Set(getTableColumns(db, 'job_cards'))
+  if (!jobCardColumns.has('service_type')) db.run("ALTER TABLE job_cards ADD COLUMN service_type TEXT")
+  if (!jobCardColumns.has('quoted_amount')) db.run("ALTER TABLE job_cards ADD COLUMN quoted_amount REAL NOT NULL DEFAULT 0")
+  if (!jobCardColumns.has('payment_status')) db.run("ALTER TABLE job_cards ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'Unpaid'")
+  if (!jobCardColumns.has('customer_notification_sent')) db.run("ALTER TABLE job_cards ADD COLUMN customer_notification_sent INTEGER NOT NULL DEFAULT 0")
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS sales (
+      id TEXT PRIMARY KEY,
+      sale_number TEXT NOT NULL UNIQUE,
+      customer_name TEXT,
+      customer_phone TEXT,
+      subtotal REAL NOT NULL DEFAULT 0,
+      discount_amount REAL NOT NULL DEFAULT 0,
+      total_amount REAL NOT NULL DEFAULT 0,
+      payment_method TEXT NOT NULL DEFAULT 'Cash',
+      notes TEXT,
+      sold_by TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (sold_by) REFERENCES users(id) ON DELETE SET NULL
+    )
+  `)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS sale_items (
+      id TEXT PRIMARY KEY,
+      sale_id TEXT NOT NULL,
+      part_id TEXT NOT NULL,
+      quantity INTEGER NOT NULL CHECK (quantity > 0),
+      unit_price REAL NOT NULL,
+      line_total REAL NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (sale_id) REFERENCES sales(id) ON DELETE CASCADE,
+      FOREIGN KEY (part_id) REFERENCES parts(id) ON DELETE RESTRICT
+    )
+  `)
 }
 
 async function seedIfEmpty(db: Database) {
@@ -225,13 +349,222 @@ async function seedIfEmpty(db: Database) {
 
   const now = timestamp()
   const email = process.env.AZIM_LOCAL_ADMIN_EMAIL ?? 'admin@admin.com'
-  const password = process.env.AZIM_LOCAL_ADMIN_PASSWORD ?? 'admin1234'
+  const phone = process.env.AZIM_LOCAL_ADMIN_PHONE ?? '0770000000'
+  const password = process.env.AZIM_LOCAL_ADMIN_PASSWORD ?? 'admin'
   const passwordHash = await hash(password, 10)
   db.run(
-    `INSERT INTO users (id, email, password_hash, full_name, role, phone, avatar_url, is_active, created_at, updated_at)
-     VALUES (?, ?, ?, ?, 'admin', NULL, NULL, 1, ?, ?)`,
-    [crypto.randomUUID(), email.toLowerCase(), passwordHash, 'Azim Motors Admin', now, now],
+    `INSERT INTO users (id, email, password_hash, pin_hash, password_login_enabled, full_name, role, phone, avatar_url, is_active, created_at, updated_at)
+     VALUES (?, ?, ?, NULL, 1, ?, 'admin', ?, NULL, 1, ?, ?)` ,
+    [crypto.randomUUID(), email.toLowerCase(), passwordHash, 'Azim Motors Admin', phone, now, now],
   )
+}
+
+async function ensureDefaultAdminCredentials(db: Database) {
+  const admin = selectOneFromDb<{
+    id: string
+    email: string
+    password_hash: string
+    full_name: string
+    phone: string | null
+  }>(
+    db,
+    `SELECT id, email, password_hash, full_name, phone
+     FROM users
+     WHERE role = 'admin'
+     ORDER BY created_at ASC
+     LIMIT 1`,
+  )
+
+  if (!admin) return false
+
+  const desiredEmail = (process.env.AZIM_LOCAL_ADMIN_EMAIL ?? 'admin@admin.com').toLowerCase()
+  const desiredPhone = process.env.AZIM_LOCAL_ADMIN_PHONE ?? '0770000000'
+  const desiredPassword = process.env.AZIM_LOCAL_ADMIN_PASSWORD ?? 'admin'
+  const legacyPassword = 'admin1234'
+  const isDefaultAdminCandidate = admin.full_name === 'Azim Motors Admin'
+    || admin.email.toLowerCase() === desiredEmail
+    || admin.phone === desiredPhone
+
+  if (!isDefaultAdminCandidate) return false
+
+  const alreadyUsingDesiredPassword = await compare(desiredPassword, admin.password_hash)
+  const stillUsingLegacyPassword = alreadyUsingDesiredPassword ? false : await compare(legacyPassword, admin.password_hash)
+
+  if (!alreadyUsingDesiredPassword && !stillUsingLegacyPassword) return false
+
+  const nextPasswordHash = alreadyUsingDesiredPassword ? admin.password_hash : await hash(desiredPassword, 10)
+  db.run(
+    `UPDATE users
+     SET email = ?, phone = ?, password_hash = ?, updated_at = ?
+     WHERE id = ?`,
+    [desiredEmail, desiredPhone, nextPasswordHash, timestamp(), admin.id],
+  )
+
+  return true
+}
+
+export async function ensureRuntimeDefaultAdminCredentials() {
+  const state = await getState()
+  const changed = await ensureDefaultAdminCredentials(state.db)
+  if (changed) {
+    await persist(state.db)
+  }
+}
+
+function seedInventoryIfEmpty(db: Database) {
+  const row = selectOneFromDb<{ count: number }>(db, 'SELECT COUNT(*) AS count FROM parts')
+  if ((Number(row?.count) || 0) > 0) return
+
+  seedSampleInventory(db)
+}
+
+function seedSampleInventory(db: Database) {
+  const now = timestamp()
+  let insertedParts = 0
+  let insertedSuppliers = 0
+
+  const supplierRows = [
+    {
+      id: crypto.randomUUID(),
+      name: 'Star Benz Spares',
+      contact_name: 'Martin Dube',
+      phone: '+263774110220',
+      email: 'benzparts@azim.local',
+      address: 'Msasa Industrial, Harare',
+    },
+    {
+      id: crypto.randomUUID(),
+      name: 'Workshop Tools Hub',
+      contact_name: 'Rudo Moyo',
+      phone: '+263774220330',
+      email: 'tools@azim.local',
+      address: 'Graniteside, Harare',
+    },
+  ]
+
+  for (const supplier of supplierRows) {
+    const existingSupplier = selectOneFromDb<{ id: string }>(db, 'SELECT id FROM suppliers WHERE name = ? LIMIT 1', [supplier.name])
+    if (!existingSupplier) {
+      db.run(
+        `INSERT INTO suppliers (id, name, contact_name, phone, email, address, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [supplier.id, supplier.name, supplier.contact_name, supplier.phone, supplier.email, supplier.address, now],
+      )
+      insertedSuppliers += 1
+    } else {
+      supplier.id = existingSupplier.id
+    }
+  }
+
+  const sampleParts = [
+    {
+      name: 'Mercedes-Benz W204 Oil Filter Kit',
+      part_number: 'MB-W204-OFK',
+      description: 'Service kit with oil filter, sump washer, and O-rings for routine C-Class servicing.',
+      quantity: 12,
+      reorder_level: 3,
+      unit_cost: 18,
+      selling_price: 30,
+      supplier_id: supplierRows[0].id,
+      location: 'Shelf A1',
+    },
+    {
+      name: 'Mercedes-Benz Brake Pad Set Front',
+      part_number: 'MB-BPF-212',
+      description: 'Front brake pad set suitable for common E-Class workshop jobs.',
+      quantity: 8,
+      reorder_level: 2,
+      unit_cost: 52,
+      selling_price: 78,
+      supplier_id: supplierRows[0].id,
+      location: 'Shelf A4',
+    },
+    {
+      name: 'Engine Tune-Up Repair Kit',
+      part_number: 'KIT-TUNE-01',
+      description: 'Assorted plugs, belts, and fluid-service consumables for tune-up work.',
+      quantity: 6,
+      reorder_level: 2,
+      unit_cost: 95,
+      selling_price: 135,
+      supplier_id: supplierRows[1].id,
+      location: 'Kit Rack B2',
+    },
+    {
+      name: 'Torque Wrench 1/2 inch',
+      part_number: 'TOOL-TW-12',
+      description: 'Workshop-grade torque wrench for suspension, wheel, and engine work.',
+      quantity: 4,
+      reorder_level: 1,
+      unit_cost: 80,
+      selling_price: 120,
+      supplier_id: supplierRows[1].id,
+      location: 'Tool Wall C1',
+    },
+    {
+      name: 'Mercedes-Benz Suspension Bush Kit',
+      part_number: 'MB-SBK-ML',
+      description: 'Front-end bush repair kit for common Mercedes suspension jobs.',
+      quantity: 5,
+      reorder_level: 2,
+      unit_cost: 68,
+      selling_price: 102,
+      supplier_id: supplierRows[0].id,
+      location: 'Shelf B3',
+    },
+    {
+      name: 'Diagnostic Scanner OBD Kit',
+      part_number: 'TOOL-OBD-PRO',
+      description: 'Garage diagnostic tool kit for quick ECU scan and fault tracing.',
+      quantity: 3,
+      reorder_level: 1,
+      unit_cost: 140,
+      selling_price: 195,
+      supplier_id: supplierRows[1].id,
+      location: 'Tool Locker D2',
+    },
+  ]
+
+  for (const part of sampleParts) {
+    const existingPart = selectOneFromDb<{ id: string }>(db, 'SELECT id FROM parts WHERE part_number = ? LIMIT 1', [part.part_number])
+    if (existingPart) {
+      continue
+    }
+
+    const id = crypto.randomUUID()
+    db.run(
+      `INSERT INTO parts (id, part_number, name, description, quantity, reorder_level, unit_cost, selling_price, supplier_id, location, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      [
+        id,
+        part.part_number,
+        part.name,
+        part.description,
+        part.quantity,
+        part.reorder_level,
+        part.unit_cost,
+        part.selling_price,
+        part.supplier_id,
+        part.location,
+        now,
+        now,
+      ],
+    )
+
+    db.run(
+      `INSERT INTO stock_movements (id, part_id, job_card_id, movement_type, quantity, quantity_before, quantity_after, reason, performed_by, created_at)
+       VALUES (?, ?, NULL, 'IN', ?, 0, ?, 'Seed sample stock', NULL, ?)`,
+      [crypto.randomUUID(), id, part.quantity, part.quantity, now],
+    )
+
+    insertedParts += 1
+  }
+
+  return { insertedParts, insertedSuppliers }
+}
+
+export async function seedSampleInventoryNow() {
+  return writeTransaction(db => seedSampleInventory(db))
 }
 
 async function persist(db: Database) {
@@ -239,11 +572,22 @@ async function persist(db: Database) {
   await writeFile(DB_FILE, Buffer.from(bytes))
 }
 
+async function ensureStateSchema(state: DatabaseState) {
+  const userColumns = new Set(getTableColumns(state.db, 'users'))
+  if (userColumns.has('pin_hash') && userColumns.has('password_login_enabled')) return
+
+  migrateSchema(state.db)
+  await ensureDefaultAdminCredentials(state.db)
+  await persist(state.db)
+}
+
 async function getState() {
   if (!globalThis.__azimDbState) {
     globalThis.__azimDbState = createState()
   }
-  return globalThis.__azimDbState
+  const state = await globalThis.__azimDbState
+  await ensureStateSchema(state)
+  return state
 }
 
 export function timestamp() {

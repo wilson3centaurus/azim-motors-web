@@ -16,7 +16,7 @@ export default function ReportsPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `azim-motors-${type}-${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'pdf'}`
+    a.download = `hazim-motors-${type}-${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'pdf'}`
     a.click()
     URL.revokeObjectURL(url)
     setLoading(null)
@@ -34,12 +34,12 @@ export default function ReportsPage() {
         <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Date Range (optional)</h2>
         <div className="flex gap-4 flex-wrap">
           <div>
-            <label className="block text-xs text-slate-600 mb-1">From</label>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label htmlFor="reports-date-from" className="block text-xs text-slate-600 mb-1">From</label>
+            <input id="reports-date-from" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
-            <label className="block text-xs text-slate-600 mb-1">To</label>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label htmlFor="reports-date-to" className="block text-xs text-slate-600 mb-1">To</label>
+            <input id="reports-date-to" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         </div>
       </div>

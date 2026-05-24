@@ -1,5 +1,6 @@
 export type JobStatus = 'Pending' | 'In Progress' | 'Completed' | 'Cancelled'
-export type UserRole = 'admin' | 'mechanic' | 'receptionist'
+export type UserRole = 'admin' | 'mechanic' | 'salesperson' | 'receptionist'
+export type PaymentStatus = 'Unpaid' | 'Deposit Paid' | 'Paid'
 
 export interface UserProfile {
   id: string
@@ -8,6 +9,8 @@ export interface UserProfile {
   phone: string | null
   avatar_url: string | null
   is_active: boolean
+  has_pin: boolean
+  password_login_enabled: boolean
   created_at: string
   updated_at: string
 }
@@ -92,6 +95,7 @@ export interface JobCard {
   assigned_mechanic: string | null
   created_by: string | null
   status: JobStatus
+  service_type: string | null
   complaint: string
   diagnosis: string | null
   work_done: string | null
@@ -99,7 +103,10 @@ export interface JobCard {
   estimated_return: string | null
   actual_return: string | null
   labour_cost: number
+  quoted_amount: number
   total_parts_cost: number
+  payment_status: PaymentStatus
+  customer_notification_sent: boolean
   notes: string | null
   created_at: string
   updated_at: string
@@ -148,6 +155,33 @@ export interface StockMovement {
   reason: string | null
   performed_by: string | null
   created_at: string
+}
+
+export interface Sale {
+  id: string
+  sale_number: string
+  customer_name: string | null
+  customer_phone: string | null
+  subtotal: number
+  discount_amount: number
+  total_amount: number
+  payment_method: string
+  notes: string | null
+  sold_by: string | null
+  created_at: string
+  seller?: UserProfile
+  items?: SaleItem[]
+}
+
+export interface SaleItem {
+  id: string
+  sale_id: string
+  part_id: string
+  quantity: number
+  unit_price: number
+  line_total: number
+  created_at: string
+  parts?: Part
 }
 
 export interface DashboardStats {

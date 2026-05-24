@@ -17,12 +17,14 @@ export async function POST(request: Request) {
     )
   }
 
-  const user = await authenticateUser(parsed.data.email, parsed.data.password)
+  const user = await authenticateUser(parsed.data.identifier, parsed.data.secret, { usePassword: parsed.data.usePassword })
   if (!user) {
     return NextResponse.json(
       {
         ok: false,
-        message: 'Invalid email or password.',
+        message: parsed.data.usePassword
+          ? 'Invalid email, phone, or recovery password.'
+          : 'Invalid phone number or PIN.',
       },
       { status: 401 },
     )

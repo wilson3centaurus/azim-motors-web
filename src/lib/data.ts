@@ -1,12 +1,15 @@
 import { hash } from 'bcryptjs'
 import type { Database } from 'sql.js'
-import { queryAll, queryOne, runInTransaction, selectOneInTransaction, timestamp, writeTransaction } from '@/lib/db'
-import type { Customer, JobCard, JobCardPart, JobStatus, Part, RepairRecord, Supplier, UserProfile, UserRole, Vehicle } from '@/lib/supabase/types'
+import { queryAll, queryOne, runInTransaction, selectAllInTransaction, selectOneInTransaction, timestamp, writeTransaction } from '@/lib/db'
+import type { Customer, JobCard, JobCardPart, JobStatus, Part, PaymentStatus, RepairRecord, Sale, Supplier, UserProfile, UserRole, Vehicle } from '@/lib/supabase/types'
+import { normalizePhone } from '@/lib/utils'
 
 type UserRow = {
   id: string
   email: string
   password_hash: string
+  pin_hash: string | null
+  password_login_enabled: number
   full_name: string
   role: UserRole
   phone: string | null
@@ -23,7 +26,7 @@ type PartRow = Omit<Part, 'suppliers' | 'is_active'> & { is_active: number }
 type JobCardRow = Omit<JobCard, 'vehicles' | 'customers' | 'mechanic'>
 type JobCardPartRow = Omit<JobCardPart, 'parts'>
 type RepairRecordRow = Omit<RepairRecord, 'vehicles' | 'customers' | 'job_cards'>
-
+type SaleRow = Omit<Sale, 'seller' | 'items'>
 function asNullableNumber(value: unknown) {
   return value === null || value === undefined || value === '' ? null : Number(value)
 }
@@ -45,6 +48,8 @@ function mapUserProfile(row: UserRow): UserProfile {
     phone: row.phone,
     avatar_url: row.avatar_url,
     is_active: Boolean(row.is_active),
+    has_pin: Boolean(row.pin_hash),
+    password_login_enabled: Boolean(row.password_login_enabled),
     created_at: row.created_at,
     updated_at: row.updated_at,
   }
@@ -103,6 +108,16 @@ function sanitizeText(value?: string | null) {
   return next.length > 0 ? next : null
 }
 
+function createSyntheticEmail(phone: string | null | undefined, fullName: string) {
+  const normalized = normalizePhone(phone)
+  if (normalized) {
+    return `${normalized}@staff.azim.local`
+  }
+
+  const slug = fullName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.')
+  return `${slug || 'staff'}@staff.azim.local`
+}
+
 function nextJobNumber(db: Database) {
   const year = new Date().getFullYear()
   const existing = selectOneInTransaction<{ year: number; value: number }>(db, 'SELECT year, value FROM job_number_sequences WHERE year = ?', [year])
@@ -115,6 +130,20 @@ function nextJobNumber(db: Database) {
   const updated = selectOneInTransaction<{ value: number }>(db, 'SELECT value FROM job_number_sequences WHERE year = ?', [year])
   const value = String(updated?.value ?? 1).padStart(4, '0')
   return `JC-${year}-${value}`
+}
+
+function nextSaleNumber(db: Database) {
+  const year = new Date().getFullYear()
+  const sequenceKey = year + 1000
+  const existing = selectOneInTransaction<{ year: number; value: number }>(db, 'SELECT year, value FROM job_number_sequences WHERE year = ?', [sequenceKey])
+
+  if (!existing) {
+    runInTransaction(db, 'INSERT INTO job_number_sequences (year, value) VALUES (?, 0)', [sequenceKey])
+  }
+
+  runInTransaction(db, 'UPDATE job_number_sequences SET value = value + 1 WHERE year = ?', [sequenceKey])
+  const updated = selectOneInTransaction<{ value: number }>(db, 'SELECT value FROM job_number_sequences WHERE year = ?', [sequenceKey])
+  return `POS-${year}-${String(updated?.value ?? 1).padStart(4, '0')}`
 }
 
 function recalculateJobPartsCost(db: Database, jobId: string) {
@@ -185,6 +214,12 @@ export async function getUserAccountById(id: string) {
 
 export async function getUserByEmail(email: string) {
   return queryOne<UserRow>('SELECT * FROM users WHERE lower(email) = lower(?)', [email.trim()])
+}
+
+export async function getUserByPhone(phone: string) {
+  const normalized = normalizePhone(phone)
+  const users = await queryAll<UserRow>('SELECT * FROM users WHERE phone IS NOT NULL')
+  return users.find(user => normalizePhone(user.phone) === normalized) ?? null
 }
 
 export async function listMechanics() {
@@ -353,6 +388,16 @@ export async function listParts() {
   )
 
   return rows.map(row => ({ ...mapPart(row), suppliers: row.supplier_name ? { name: row.supplier_name } as Supplier : undefined }))
+}
+
+export async function listPartsForSale(search?: string) {
+  const parts = await listParts()
+  const query = search?.trim().toLowerCase()
+  return parts.filter(part => {
+    if (part.quantity <= 0) return false
+    if (!query) return true
+    return part.name.toLowerCase().includes(query) || (part.part_number ?? '').toLowerCase().includes(query)
+  })
 }
 
 export async function getPartDetail(id: string) {
@@ -744,7 +789,7 @@ export async function adjustPartStock(payload: {
 
 export async function createVehicleRecord(payload: {
   customer_id: string
-  registration: string
+  registration?: string | null
   make: string
   model: string
   year?: number | null
@@ -753,11 +798,12 @@ export async function createVehicleRecord(payload: {
   return writeTransaction(db => {
     const now = timestamp()
     const id = crypto.randomUUID()
+    const registration = sanitizeText(payload.registration)?.toUpperCase() ?? `UNREGISTERED-${id.slice(0, 8).toUpperCase()}`
     runInTransaction(
       db,
       `INSERT INTO vehicles (id, customer_id, registration, make, model, year, color, vin, mileage_in, rfid_tag, notes, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?, ?)`,
-      [id, payload.customer_id, payload.registration.trim().toUpperCase(), payload.make.trim(), payload.model.trim(), payload.year ?? null, sanitizeText(payload.color), now, now],
+      [id, payload.customer_id, registration, payload.make.trim(), payload.model.trim(), payload.year ?? null, sanitizeText(payload.color), now, now],
     )
     return { id }
   })
@@ -776,9 +822,11 @@ export async function listVehiclesForCustomer(customerId: string) {
 export async function createJobCardRecord(payload: {
   customer_id: string
   vehicle_id: string
+  service_type: string
   complaint: string
   assigned_mechanic?: string | null
   estimated_return?: string | null
+  quoted_amount: number
   notes?: string | null
   created_by?: string | null
 }) {
@@ -790,8 +838,8 @@ export async function createJobCardRecord(payload: {
 
     runInTransaction(
       db,
-      `INSERT INTO job_cards (id, job_number, vehicle_id, customer_id, assigned_mechanic, created_by, status, complaint, diagnosis, work_done, date_received, estimated_return, actual_return, labour_cost, total_parts_cost, notes, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?, NULL, NULL, ?, ?, NULL, 0, 0, ?, ?, ?)`,
+      `INSERT INTO job_cards (id, job_number, vehicle_id, customer_id, assigned_mechanic, created_by, status, service_type, complaint, diagnosis, work_done, date_received, estimated_return, actual_return, labour_cost, quoted_amount, total_parts_cost, payment_status, customer_notification_sent, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'Pending', ?, ?, NULL, NULL, ?, ?, NULL, 0, ?, 0, 'Unpaid', 0, ?, ?, ?)`,
       [
         id,
         jobNumber,
@@ -799,9 +847,11 @@ export async function createJobCardRecord(payload: {
         payload.customer_id,
         sanitizeText(payload.assigned_mechanic),
         payload.created_by ?? null,
+        payload.service_type.trim(),
         payload.complaint.trim(),
         dateReceived,
         sanitizeText(payload.estimated_return),
+        payload.quoted_amount,
         sanitizeText(payload.notes),
         now,
         now,
@@ -815,10 +865,13 @@ export async function createJobCardRecord(payload: {
 export async function updateJobCardRecord(payload: {
   id: string
   status: JobStatus
+  service_type?: string | null
   assigned_mechanic?: string | null
   diagnosis?: string | null
   work_done?: string | null
   labour_cost: number
+  quoted_amount: number
+  payment_status: PaymentStatus
   estimated_return?: string | null
   notes?: string | null
 }) {
@@ -835,14 +888,17 @@ export async function updateJobCardRecord(payload: {
     runInTransaction(
       db,
       `UPDATE job_cards
-       SET status = ?, assigned_mechanic = ?, diagnosis = ?, work_done = ?, labour_cost = ?, estimated_return = ?, notes = ?, actual_return = ?, updated_at = ?
+       SET status = ?, service_type = ?, assigned_mechanic = ?, diagnosis = ?, work_done = ?, labour_cost = ?, quoted_amount = ?, payment_status = ?, estimated_return = ?, notes = ?, actual_return = ?, updated_at = ?
        WHERE id = ?`,
       [
         payload.status,
+        sanitizeText(payload.service_type),
         sanitizeText(payload.assigned_mechanic),
         sanitizeText(payload.diagnosis),
         sanitizeText(payload.work_done),
         payload.labour_cost,
+        payload.quoted_amount,
+        payload.payment_status,
         sanitizeText(payload.estimated_return),
         sanitizeText(payload.notes),
         actualReturn,
@@ -854,6 +910,38 @@ export async function updateJobCardRecord(payload: {
     if (previous.status !== 'Completed' && payload.status === 'Completed') {
       ensureRepairRecord(db, payload.id)
     }
+  })
+}
+
+export async function markJobCardNotificationSent(jobId: string) {
+  return writeTransaction(db => {
+    runInTransaction(db, 'UPDATE job_cards SET customer_notification_sent = 1, updated_at = ? WHERE id = ?', [timestamp(), jobId])
+  })
+}
+
+export async function deleteJobCardRecord(jobId: string, actorId?: string | null) {
+  return writeTransaction(db => {
+    const job = selectOneInTransaction<{ status: JobStatus }>(db, 'SELECT status FROM job_cards WHERE id = ?', [jobId])
+    if (!job) throw new Error('Job card not found.')
+    if (job.status === 'Completed') throw new Error('Completed job cards cannot be deleted.')
+
+    const lines = selectAllInTransaction<{ part_id: string; quantity_used: number }>(db, 'SELECT part_id, quantity_used FROM job_card_parts WHERE job_card_id = ?', [jobId])
+    const now = timestamp()
+
+    for (const line of lines) {
+      const part = selectOneInTransaction<{ quantity: number }>(db, 'SELECT quantity FROM parts WHERE id = ?', [line.part_id])
+      const quantityBefore = Number(part?.quantity ?? 0)
+      const quantityAfter = quantityBefore + Number(line.quantity_used)
+      runInTransaction(db, 'UPDATE parts SET quantity = ?, updated_at = ? WHERE id = ?', [quantityAfter, now, line.part_id])
+      runInTransaction(
+        db,
+        `INSERT INTO stock_movements (id, part_id, job_card_id, movement_type, quantity, quantity_before, quantity_after, reason, performed_by, created_at)
+         VALUES (?, ?, ?, 'IN', ?, ?, ?, 'Job card deleted', ?, ?)`,
+        [crypto.randomUUID(), line.part_id, jobId, Number(line.quantity_used), quantityBefore, quantityAfter, actorId ?? null, now],
+      )
+    }
+
+    runInTransaction(db, 'DELETE FROM job_cards WHERE id = ?', [jobId])
   })
 }
 
@@ -933,12 +1021,18 @@ export async function resetPasswordForEmail(email: string, nextPassword: string)
   const user = await getUserByEmail(email)
   if (!user) return false
   const passwordHash = await hash(nextPassword, 10)
-  await updateUserPassword(user.id, passwordHash)
+  await writeTransaction(db => {
+    runInTransaction(
+      db,
+      'UPDATE users SET password_hash = ?, pin_hash = NULL, password_login_enabled = 1, updated_at = ? WHERE id = ?',
+      [passwordHash, timestamp(), user.id],
+    )
+  })
   return true
 }
 
 export async function createUserRecord(payload: {
-  email: string
+  email?: string | null
   full_name: string
   role: UserRole
   phone?: string | null
@@ -950,11 +1044,37 @@ export async function createUserRecord(payload: {
     const id = crypto.randomUUID()
     runInTransaction(
       db,
-      `INSERT INTO users (id, email, password_hash, full_name, role, phone, avatar_url, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, NULL, 1, ?, ?)`,
-      [id, payload.email.trim().toLowerCase(), passwordHash, payload.full_name.trim(), payload.role, sanitizeText(payload.phone), now, now],
+      `INSERT INTO users (id, email, password_hash, pin_hash, password_login_enabled, full_name, role, phone, avatar_url, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, NULL, 1, ?, ?, ?, NULL, 1, ?, ?)` ,
+      [id, sanitizeText(payload.email)?.toLowerCase() ?? createSyntheticEmail(payload.phone, payload.full_name), passwordHash, payload.full_name.trim(), payload.role, sanitizeText(payload.phone), now, now],
     )
     return { id }
+  })
+}
+
+export async function updateUserPin(userId: string, pinHash: string) {
+  return writeTransaction(db => {
+    runInTransaction(
+      db,
+      'UPDATE users SET pin_hash = ?, password_login_enabled = 0, updated_at = ? WHERE id = ?',
+      [pinHash, timestamp(), userId],
+    )
+  })
+}
+
+export async function resetUserLoginAccess(userId: string, passwordHash: string) {
+  return writeTransaction(db => {
+    runInTransaction(
+      db,
+      'UPDATE users SET password_hash = ?, pin_hash = NULL, password_login_enabled = 1, updated_at = ? WHERE id = ?',
+      [passwordHash, timestamp(), userId],
+    )
+  })
+}
+
+export async function deleteUserRecord(userId: string) {
+  return writeTransaction(db => {
+    runInTransaction(db, 'DELETE FROM users WHERE id = ?', [userId])
   })
 }
 
@@ -1014,4 +1134,140 @@ export async function getStockExportData() {
   )
 
   return rows.map(row => ({ ...mapPart(row), suppliers: row.supplier_name ? ({ name: row.supplier_name } as Supplier) : undefined }))
+}
+
+export async function getMechanicDashboardData(userId: string) {
+  const [user, activeJobs, completedToday] = await Promise.all([
+    queryOne<UserRow>('SELECT * FROM users WHERE id = ?', [userId]),
+    queryAll<JobCardRow & { customer_name: string; registration: string | null }>(
+      `SELECT job_cards.*, customers.full_name AS customer_name, vehicles.registration
+       FROM job_cards
+       JOIN customers ON customers.id = job_cards.customer_id
+       JOIN vehicles ON vehicles.id = job_cards.vehicle_id
+       WHERE job_cards.assigned_mechanic = ?
+         AND job_cards.status IN ('Pending', 'In Progress')
+       ORDER BY job_cards.updated_at DESC`,
+      [userId],
+    ),
+    queryOne<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM job_cards
+       WHERE assigned_mechanic = ?
+         AND status = 'Completed'
+         AND date(actual_return) = date('now')`,
+      [userId],
+    ),
+  ])
+
+  return {
+    profile: user ? mapUserProfile(user) : null,
+    activeJobs: activeJobs.map(job => ({
+      ...mapJobCard(job),
+      customers: { full_name: job.customer_name } as Customer,
+      vehicles: { registration: job.registration ?? '' } as Vehicle,
+    })),
+    completedToday: Number(completedToday?.count ?? 0),
+  }
+}
+
+export async function getSalesDashboardData(userId?: string) {
+  const today = new Date().toISOString().slice(0, 10)
+  const [salesToday, salesCount, parts, recentSales] = await Promise.all([
+    queryOne<{ total: number }>(
+      `SELECT COALESCE(SUM(total_amount), 0) AS total
+       FROM sales
+       WHERE date(created_at) = date(?) ${userId ? 'AND sold_by = ?' : ''}`,
+      userId ? [today, userId] : [today],
+    ),
+    queryOne<{ count: number }>(
+      `SELECT COUNT(*) AS count
+       FROM sales
+       WHERE date(created_at) = date(?) ${userId ? 'AND sold_by = ?' : ''}`,
+      userId ? [today, userId] : [today],
+    ),
+    listParts(),
+    listSales(userId, 5),
+  ])
+
+  return {
+    salesToday: Number(salesToday?.total ?? 0),
+    salesCount: Number(salesCount?.count ?? 0),
+    lowStockCount: parts.filter(part => part.quantity <= part.reorder_level).length,
+    availableParts: parts.filter(part => part.quantity > 0),
+    recentSales,
+  }
+}
+
+export async function listSales(userId?: string, limit?: number) {
+  const rows = await queryAll<SaleRow & { seller_name: string | null }>(
+    `SELECT sales.*, users.full_name AS seller_name
+     FROM sales
+     LEFT JOIN users ON users.id = sales.sold_by
+     WHERE (? IS NULL OR sales.sold_by = ?)
+     ORDER BY sales.created_at DESC
+     ${limit ? `LIMIT ${limit}` : ''}`,
+    [userId ?? null, userId ?? null],
+  )
+
+  return rows.map(row => ({
+    ...row,
+    seller: row.seller_name ? ({ full_name: row.seller_name } as UserProfile) : undefined,
+  }))
+}
+
+export async function createSaleRecord(payload: {
+  customer_name?: string | null
+  customer_phone?: string | null
+  payment_method: string
+  notes?: string | null
+  sold_by?: string | null
+  discount_amount?: number
+  items: Array<{ part_id: string; quantity: number }>
+}) {
+  return writeTransaction(db => {
+    if (payload.items.length === 0) {
+      throw new Error('Add at least one stock item to the sale.')
+    }
+
+    const saleId = crypto.randomUUID()
+    const now = timestamp()
+    const saleNumber = nextSaleNumber(db)
+    let subtotal = 0
+
+    for (const item of payload.items) {
+      const part = selectOneInTransaction<{ quantity: number; selling_price: number | null; unit_cost: number; name: string }>(db, 'SELECT quantity, selling_price, unit_cost, name FROM parts WHERE id = ?', [item.part_id])
+      if (!part) throw new Error('One of the selected stock items no longer exists.')
+      if (Number(part.quantity) < item.quantity) throw new Error(`${part.name} does not have enough stock.`)
+
+      const unitPrice = Number(part.selling_price ?? part.unit_cost)
+      const lineTotal = unitPrice * item.quantity
+      subtotal += lineTotal
+
+      runInTransaction(
+        db,
+        `INSERT INTO sale_items (id, sale_id, part_id, quantity, unit_price, line_total, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [crypto.randomUUID(), saleId, item.part_id, item.quantity, unitPrice, lineTotal, now],
+      )
+
+      const quantityAfter = Number(part.quantity) - item.quantity
+      runInTransaction(db, 'UPDATE parts SET quantity = ?, updated_at = ? WHERE id = ?', [quantityAfter, now, item.part_id])
+      runInTransaction(
+        db,
+        `INSERT INTO stock_movements (id, part_id, job_card_id, movement_type, quantity, quantity_before, quantity_after, reason, performed_by, created_at)
+         VALUES (?, ?, NULL, 'OUT', ?, ?, ?, 'POS sale', ?, ?)`,
+        [crypto.randomUUID(), item.part_id, -item.quantity, Number(part.quantity), quantityAfter, payload.sold_by ?? null, now],
+      )
+    }
+
+    const discount = Number(payload.discount_amount ?? 0)
+    const total = Math.max(subtotal - discount, 0)
+    runInTransaction(
+      db,
+      `INSERT INTO sales (id, sale_number, customer_name, customer_phone, subtotal, discount_amount, total_amount, payment_method, notes, sold_by, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [saleId, saleNumber, sanitizeText(payload.customer_name), sanitizeText(payload.customer_phone), subtotal, discount, total, payload.payment_method, sanitizeText(payload.notes), payload.sold_by ?? null, now],
+    )
+
+    return { id: saleId, sale_number: saleNumber, total_amount: total }
+  })
 }

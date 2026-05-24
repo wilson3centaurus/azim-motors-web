@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
-import { formatDate, formatCurrency } from '@/lib/utils'
+import { formatDate, formatCurrency, displayVehicleRegistration } from '@/lib/utils'
 import { getJobCardPrintData } from '@/lib/data'
+import { companyProfile } from '@/lib/company'
 
 export default async function PrintJobCardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -8,11 +9,14 @@ export default async function PrintJobCardPage({ params }: { params: Promise<{ i
 
   if (!job) notFound()
 
+  const currentTotal = (job.quoted_amount ?? 0) + (job.labour_cost ?? 0) + (job.total_parts_cost ?? 0)
+
   return (
     <div className="max-w-2xl mx-auto p-8 font-sans print:p-0">
       <div className="text-center mb-8 border-b-2 border-slate-900 pb-4">
-        <h1 className="text-2xl font-bold">AZIM MOTORS</h1>
-        <p className="text-sm text-slate-600">Garage Management System</p>
+        <h1 className="text-2xl font-bold uppercase">{companyProfile.name}</h1>
+        <p className="text-sm text-slate-600">{companyProfile.address}</p>
+        <p className="text-sm text-slate-600">{companyProfile.phone} · {companyProfile.email}</p>
         <p className="text-lg font-bold mt-2">{job.job_number}</p>
       </div>
 
@@ -25,17 +29,19 @@ export default async function PrintJobCardPage({ params }: { params: Promise<{ i
         </div>
         <div>
           <h2 className="font-bold text-sm uppercase border-b mb-2">Vehicle</h2>
-          <p className="font-medium">{job.vehicles?.registration}</p>
+          <p className="font-medium">{displayVehicleRegistration(job.vehicles?.registration)}</p>
           <p className="text-sm text-slate-600">{job.vehicles?.make} {job.vehicles?.model} {job.vehicles?.year}</p>
           {job.vehicles?.color && <p className="text-sm text-slate-600">Color: {job.vehicles.color}</p>}
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
+      <div className="grid grid-cols-2 gap-4 mb-6 text-sm md:grid-cols-3">
         <div><span className="font-medium">Received:</span> {formatDate(job.date_received)}</div>
         <div><span className="font-medium">Est. Return:</span> {formatDate(job.estimated_return)}</div>
         <div><span className="font-medium">Mechanic:</span> {job.mechanic?.full_name ?? '—'}</div>
         <div><span className="font-medium">Status:</span> {job.status}</div>
+        <div><span className="font-medium">Service:</span> {job.service_type ?? 'General Repair'}</div>
+        <div><span className="font-medium">Payment:</span> {job.payment_status}</div>
       </div>
 
       <div className="mb-6">
@@ -84,15 +90,23 @@ export default async function PrintJobCardPage({ params }: { params: Promise<{ i
       )}
 
       <div className="border-t-2 border-slate-900 pt-4 space-y-1 text-sm">
+        <div className="flex justify-between"><span>Quoted</span><span>{formatCurrency(job.quoted_amount)}</span></div>
         <div className="flex justify-between"><span>Labour</span><span>{formatCurrency(job.labour_cost)}</span></div>
         <div className="flex justify-between"><span>Parts</span><span>{formatCurrency(job.total_parts_cost)}</span></div>
         <div className="flex justify-between font-bold text-base border-t mt-1 pt-1">
-          <span>TOTAL</span><span>{formatCurrency((job.labour_cost ?? 0) + (job.total_parts_cost ?? 0))}</span>
+          <span>TOTAL</span><span>{formatCurrency(currentTotal)}</span>
         </div>
       </div>
 
+      <div className="mt-8 rounded-xl border border-slate-200 p-4 text-sm">
+        <p className="font-semibold">Customer Copy</p>
+        <p className="mt-2 text-slate-600">
+          This job card confirms vehicle intake, the requested service, and the current estimate. Final totals may change if extra parts or labour are approved during repair.
+        </p>
+      </div>
+
       <div className="mt-8 text-xs text-slate-400 text-center">
-        Printed on {new Date().toLocaleDateString()} — Azim Motors Garage Management System
+        Printed on {new Date().toLocaleDateString()} — {companyProfile.name}
       </div>
 
       <script dangerouslySetInnerHTML={{ __html: 'window.onload = () => window.print()' }} />
