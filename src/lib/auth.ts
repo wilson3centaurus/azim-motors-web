@@ -1,22 +1,22 @@
-import { compare } from 'bcryptjs'
+﻿import { compare, hash } from 'bcryptjs'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { ensureRuntimeDefaultAdminCredentials, queryAll, queryOne } from '@/lib/db'
+import { getDb } from '@/lib/db'
 import { createSessionToken, SESSION_COOKIE, sessionCookieOptions, verifySessionToken } from '@/lib/session'
 import type { UserRole } from '@/lib/supabase/types'
 import { normalizePhone } from '@/lib/utils'
 
-type UserRow = {
+type ProfileRow = {
   id: string
   email: string
   password_hash: string
   pin_hash: string | null
-  password_login_enabled: number
+  password_login_enabled: boolean
   full_name: string
   role: UserRole
   phone: string | null
   avatar_url: string | null
-  is_active: number
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -35,7 +35,7 @@ export type SessionUser = {
   updated_at: string
 }
 
-function mapUser(row: UserRow | null): SessionUser | null {
+function mapUser(row: ProfileRow | null): SessionUser | null {
   if (!row) return null
   return {
     id: row.id,
@@ -44,18 +44,17 @@ function mapUser(row: UserRow | null): SessionUser | null {
     role: row.role,
     phone: row.phone,
     avatar_url: row.avatar_url,
-    is_active: Boolean(row.is_active),
-    has_pin: Boolean(row.pin_hash),
-    password_login_enabled: Boolean(row.password_login_enabled),
+    is_active: row.is_active,
+    has_pin: row.pin_hash !== null,
+    password_login_enabled: row.password_login_enabled,
     created_at: row.created_at,
     updated_at: row.updated_at,
   }
 }
 
-function isDefaultAdminRecoveryUser(row: Pick<UserRow, 'email' | 'phone' | 'full_name' | 'role'>) {
+function isDefaultAdminCandidate(row: Pick<ProfileRow, 'email' | 'phone' | 'full_name' | 'role'>) {
   const desiredEmail = (process.env.AZIM_LOCAL_ADMIN_EMAIL ?? 'admin@admin.com').toLowerCase()
   const desiredPhone = process.env.AZIM_LOCAL_ADMIN_PHONE ?? '0770000000'
-
   return row.role === 'admin' && (
     row.full_name === 'Azim Motors Admin'
     || row.email.toLowerCase() === desiredEmail
@@ -64,22 +63,96 @@ function isDefaultAdminRecoveryUser(row: Pick<UserRow, 'email' | 'phone' | 'full
 }
 
 async function findUserByIdentifier(identifier: string) {
+  const db = getDb()
   const trimmed = identifier.trim()
   const normalizedPhone = normalizePhone(trimmed)
-  const candidates = await queryAll<UserRow>(
-    'SELECT * FROM users WHERE is_active = 1 AND (lower(email) = lower(?) OR phone = ?)',
-    [trimmed, trimmed],
-  )
 
-  return candidates.find(candidate => {
-    if (candidate.email.toLowerCase() === trimmed.toLowerCase()) return true
-    return normalizePhone(candidate.phone) === normalizedPhone
-  }) ?? await queryOne<UserRow>('SELECT * FROM users WHERE lower(email) = lower(?)', [trimmed])
+  const { data: byEmail } = await db
+    .from('profiles')
+    .select('*')
+    .eq('is_active', true)
+    .ilike('email', trimmed)
+    .maybeSingle()
+  if (byEmail) return byEmail as ProfileRow
+
+  const { data: byPhone } = await db
+    .from('profiles')
+    .select('*')
+    .eq('is_active', true)
+    .eq('phone', trimmed)
+    .maybeSingle()
+  if (byPhone) return byPhone as ProfileRow
+
+  if (normalizedPhone && normalizedPhone !== trimmed) {
+    const { data: byNorm } = await db
+      .from('profiles')
+      .select('*')
+      .eq('is_active', true)
+      .eq('phone', normalizedPhone)
+      .maybeSingle()
+    if (byNorm) return byNorm as ProfileRow
+  }
+
+  return null
+}
+
+export async function ensureRuntimeDefaultAdminCredentials() {
+  const db = getDb()
+  const desiredEmail = (process.env.AZIM_LOCAL_ADMIN_EMAIL ?? 'admin@admin.com').toLowerCase()
+  const desiredPhone = process.env.AZIM_LOCAL_ADMIN_PHONE ?? '0770000000'
+  const desiredPassword = process.env.AZIM_LOCAL_ADMIN_PASSWORD ?? 'admin'
+
+  const { data: admins } = await db
+    .from('profiles')
+    .select('id, email, password_hash, full_name, phone')
+    .eq('role', 'admin')
+    .order('created_at')
+    .limit(1)
+
+  if (!admins || admins.length === 0) {
+    const passwordHash = await hash(desiredPassword, 10)
+    await db.from('profiles').insert({
+      email: desiredEmail,
+      password_hash: passwordHash,
+      full_name: 'Azim Motors Admin',
+      role: 'admin',
+      phone: desiredPhone,
+      is_active: true,
+      password_login_enabled: true,
+    })
+    return
+  }
+
+  const admin = admins[0] as ProfileRow
+  if (!isDefaultAdminCandidate(admin)) return
+
+  const alreadyCorrect = await compare(desiredPassword, admin.password_hash)
+  if (alreadyCorrect) {
+    // Ensure email/phone are up to date
+    await db.from('profiles').update({
+      email: desiredEmail,
+      phone: desiredPhone,
+      updated_at: new Date().toISOString(),
+    }).eq('id', admin.id)
+    return
+  }
+
+  const legacyHash = await compare('admin1234', admin.password_hash)
+  if (!legacyHash) return
+
+  const nextHash = await hash(desiredPassword, 10)
+  await db.from('profiles').update({
+    email: desiredEmail,
+    phone: desiredPhone,
+    password_hash: nextHash,
+    updated_at: new Date().toISOString(),
+  }).eq('id', admin.id)
 }
 
 export async function getUserById(id: string) {
-  const row = await queryOne<UserRow>('SELECT * FROM users WHERE id = ?', [id])
-  return mapUser(row)
+  const db = getDb()
+  const { data } = await db.from('profiles').select('*').eq('id', id).maybeSingle()
+  return mapUser(data as ProfileRow | null)
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -102,8 +175,7 @@ export async function requireUser() {
 }
 
 export async function requireAdmin() {
-  const user = await requireAnyRole(['admin'], '/settings')
-  return user
+  return requireAnyRole(['admin'], '/settings')
 }
 
 export async function requireAnyRole(roles: UserRole[], fallback = '/dashboard') {
@@ -122,7 +194,7 @@ export async function authenticateUser(identifier: string, secret: string, optio
   const credentialHash = usePassword ? row.password_hash : row.pin_hash
   if (!credentialHash) return null
 
-  if (usePassword && !row.password_login_enabled && !isDefaultAdminRecoveryUser(row)) {
+  if (usePassword && !row.password_login_enabled && !isDefaultAdminCandidate(row)) {
     return null
   }
 

@@ -63,7 +63,7 @@ export default async function PrintJobCardPage({ params }: { params: Promise<{ i
         </div>
       )}
 
-      {job.job_card_parts?.length > 0 && (
+      {(job.job_card_parts?.length ?? 0) > 0 && (
         <div className="mb-6">
           <h2 className="font-bold text-sm uppercase border-b mb-2">Parts Used</h2>
           <table className="w-full text-sm">
@@ -76,7 +76,7 @@ export default async function PrintJobCardPage({ params }: { params: Promise<{ i
               </tr>
             </thead>
             <tbody>
-              {job.job_card_parts.map(p => (
+              {job.job_card_parts?.map(p => (
                 <tr key={p.id} className="border-b border-slate-100">
                   <td className="py-1">{p.parts?.name}</td>
                   <td className="text-right py-1">{p.quantity_used}</td>

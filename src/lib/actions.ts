@@ -584,8 +584,8 @@ export async function seedSampleInventoryAction() {
     revalidatePath('/dashboard')
     revalidatePath('/sales')
     return actionOk({
-      message: result.insertedParts > 0
-        ? `Sample inventory added. ${result.insertedParts} parts and ${result.insertedSuppliers} suppliers inserted.`
+      message: result.inserted_parts > 0
+        ? `Sample inventory added. ${result.inserted_parts} parts inserted.`
         : 'Sample inventory already exists. No new parts were inserted.',
     })
   } catch (error) {

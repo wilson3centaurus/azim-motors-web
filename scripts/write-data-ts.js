@@ -1,6 +1,11 @@
-import { hash } from 'bcryptjs'
+// Helper script: writes the new Supabase-based data.ts
+// Run with: node scripts/write-data-ts.js
+const fs = require('fs')
+const path = require('path')
+
+const content = `import { hash } from 'bcryptjs'
 import { getDb, timestamp } from '@/lib/db'
-import type { Customer, JobCard, JobCardPart, JobStatus, Part, PaymentStatus, RepairRecord, Sale, Supplier, UserProfile, UserRole, Vehicle } from '@/lib/supabase/types'
+import type { Customer, JobCard, JobCardPart, JobStatus, Part, PaymentMethod, PaymentStatus, RepairRecord, Sale, Supplier, UserProfile, UserRole, Vehicle } from '@/lib/supabase/types'
 import { normalizePhone } from '@/lib/utils'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -30,9 +35,9 @@ function sanitizeText(value?: string | null) {
 
 function createSyntheticEmail(phone: string | null | undefined, fullName: string) {
   const normalized = normalizePhone(phone)
-  if (normalized) return `${normalized}@staff.azim.local`
+  if (normalized) return \`\${normalized}@staff.azim.local\`
   const slug = fullName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.')
-  return `${slug || 'staff'}@staff.azim.local`
+  return \`\${slug || 'staff'}@staff.azim.local\`
 }
 
 function mapUserProfile(row: ProfileRow): UserProfile {
@@ -255,24 +260,21 @@ export async function getDashboardData(userId: string) {
       pendingJobs: pendingRes.count ?? 0,
       lowStockCount,
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    upcomingJobs: (upcomingRes.data ?? []).map((job: any) => ({
+    upcomingJobs: (upcomingRes.data ?? []).map((job: Record<string, unknown>) => ({
       ...job,
-      customers: customerMap.get(job.customer_id) ?? { full_name: '' },
-      vehicles: vehicleMap.get(job.vehicle_id) ?? { registration: '', make: '', model: '' },
-    })) as JobCard[],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    overdueJobs: (overdueRes.data ?? []).map((job: any) => ({
+      customers: customerMap.get(job.customer_id as string) ?? { full_name: '' },
+      vehicles: vehicleMap.get(job.vehicle_id as string) ?? { registration: '', make: '', model: '' },
+    })),
+    overdueJobs: (overdueRes.data ?? []).map((job: Record<string, unknown>) => ({
       ...job,
-      customers: customerMap.get(job.customer_id) ?? { full_name: '' },
-      vehicles: vehicleMap.get(job.vehicle_id) ?? { registration: '', make: '', model: '' },
-    })) as JobCard[],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    recentJobs: (recentRes.data ?? []).map((job: any) => ({
+      customers: customerMap.get(job.customer_id as string) ?? { full_name: '' },
+      vehicles: vehicleMap.get(job.vehicle_id as string) ?? { registration: '', make: '', model: '' },
+    })),
+    recentJobs: (recentRes.data ?? []).map((job: Record<string, unknown>) => ({
       ...job,
-      customers: customerMap.get(job.customer_id) ?? { full_name: '' },
-      vehicles: vehicleMap.get(job.vehicle_id) ?? { registration: '' },
-    })) as JobCard[],
+      customers: customerMap.get(job.customer_id as string) ?? { full_name: '' },
+      vehicles: vehicleMap.get(job.vehicle_id as string) ?? { registration: '' },
+    })),
   }
 }
 
@@ -304,16 +306,15 @@ export async function getMechanicDashboardData(userId: string) {
   ])
 
   const customerMap = new Map((customersRes.data ?? []).map((c: Record<string, unknown>) => [c.id, c]))
-  const vehicleMap = new Map((vehiclesRes.data ?? []).map((v: any) => [v.id, v]))
+  const vehicleMap = new Map((vehiclesRes.data ?? []).map((v: Record<string, unknown>) => [v.id, v]))
 
   return {
     profile: userRes.data ? mapUserProfile(userRes.data as ProfileRow) : null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    activeJobs: activeJobs.map((job: any) => ({
+    activeJobs: activeJobs.map((job: Record<string, unknown>) => ({
       ...job,
-      customers: customerMap.get(job.customer_id) ?? { full_name: '' },
-      vehicles: vehicleMap.get(job.vehicle_id) ?? { registration: '' },
-    })) as JobCard[],
+      customers: customerMap.get(job.customer_id as string) ?? { full_name: '' },
+      vehicles: vehicleMap.get(job.vehicle_id as string) ?? { registration: '' },
+    })),
     completedToday: completedRes.count ?? 0,
   }
 }
@@ -321,7 +322,7 @@ export async function getMechanicDashboardData(userId: string) {
 export async function getSalesDashboardData(userId?: string) {
   const db = getDb()
   const today = new Date().toISOString().slice(0, 10)
-  let salesQuery = db.from('sales').select('total_amount').gte('created_at', `${today}T00:00:00`)
+  let salesQuery = db.from('sales').select('total_amount').gte('created_at', \`\${today}T00:00:00\`)
   if (userId) salesQuery = salesQuery.eq('sold_by', userId)
   const sales = await salesQuery
 
@@ -343,8 +344,8 @@ export async function listCustomers(search?: string) {
   const db = getDb()
   let query = db.from('customers').select('*, vehicles(id)').order('full_name')
   if (search?.trim()) {
-    const q = `%${search.trim()}%`
-    query = query.or(`full_name.ilike.${q},phone.ilike.${q},email.ilike.${q}`)
+    const q = \`%\${search.trim()}%\`
+    query = query.or(\`full_name.ilike.\${q},phone.ilike.\${q},email.ilike.\${q}\`)
   }
   const { data, error } = await query
   if (error) throw new Error(error.message)
@@ -422,7 +423,7 @@ export async function createVehicleRecord(payload: {
   const db = getDb()
   const now = timestamp()
   const id = crypto.randomUUID()
-  const registration = sanitizeText(payload.registration)?.toUpperCase() ?? `UNREGISTERED-${id.slice(0, 8).toUpperCase()}`
+  const registration = sanitizeText(payload.registration)?.toUpperCase() ?? \`UNREGISTERED-\${id.slice(0, 8).toUpperCase()}\`
   const { error } = await db.from('vehicles').insert({
     id,
     customer_id: payload.customer_id,
@@ -623,8 +624,8 @@ export async function listJobCards(filters: { status?: string; q?: string }) {
     query = query.eq('status', filters.status)
   }
   if (filters.q?.trim()) {
-    const q = `%${filters.q.trim()}%`
-    query = query.or(`job_number.ilike.${q},complaint.ilike.${q}`)
+    const q = \`%\${filters.q.trim()}%\`
+    query = query.or(\`job_number.ilike.\${q},complaint.ilike.\${q}\`)
   }
 
   const { data, error } = await query
@@ -636,14 +637,14 @@ export async function getJobCardDetail(id: string) {
   const db = getDb()
   const [jobRes, mechanics] = await Promise.all([
     db.from('job_cards')
-      .select(`
+      .select(\`
         *,
         customers(full_name, phone, email, address),
         vehicles(registration, make, model, year, color),
         mechanic:profiles!job_cards_assigned_mechanic_fkey(id, full_name, phone, role, avatar_url, is_active, created_at, updated_at),
         creator:profiles!job_cards_created_by_fkey(full_name),
         job_card_parts(*, parts(id, name, part_number))
-      `)
+      \`)
       .eq('id', id)
       .maybeSingle(),
     listMechanics(),
@@ -652,9 +653,9 @@ export async function getJobCardDetail(id: string) {
   if (!jobRes.data) return { job: null, mechanics, jobCardParts: [] as JobCardPart[] }
 
   const job = jobRes.data as JobCard
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const jobAny = job as any
-  const jobCardParts = (Array.isArray(jobAny.job_card_parts) ? jobAny.job_card_parts : []) as JobCardPart[]
+  const jobCardParts = (Array.isArray((job as Record<string, unknown>).job_card_parts)
+    ? (job as Record<string, unknown>).job_card_parts
+    : []) as JobCardPart[]
 
   return { job, mechanics, jobCardParts }
 }
@@ -804,11 +805,9 @@ export async function listRepairRecords(search?: string) {
   if (!query) return rows
 
   return rows.filter(r => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rAny = r as any
-    const v = rAny.vehicles as { registration: string } | undefined
-    const c = rAny.customers as { full_name: string } | undefined
-    const j = rAny.job_cards as { job_number: string } | undefined
+    const v = (r as Record<string, unknown>).vehicles as { registration: string } | undefined
+    const c = (r as Record<string, unknown>).customers as { full_name: string } | undefined
+    const j = (r as Record<string, unknown>).job_cards as { job_number: string } | undefined
     return (
       v?.registration.toLowerCase().includes(query)
       || c?.full_name.toLowerCase().includes(query)
@@ -847,7 +846,7 @@ export async function listSales(userId?: string, limit?: number) {
 export async function createSaleRecord(payload: {
   customer_name?: string | null
   customer_phone?: string | null
-  payment_method: string
+  payment_method: PaymentMethod
   notes?: string | null
   sold_by?: string | null
   discount_amount?: number
@@ -873,15 +872,15 @@ export async function createSaleRecord(payload: {
 export async function getJobExportData(filters: { from?: string | null; to?: string | null }) {
   const db = getDb()
   let query = db.from('repair_records')
-    .select(`
+    .select(\`
       *,
       vehicles(registration, make, model),
       customers(full_name, phone),
       job_cards(job_number, complaint, total_parts_cost)
-    `)
+    \`)
     .order('completed_at', { ascending: false })
   if (filters.from) query = query.gte('completed_at', filters.from)
-  if (filters.to) query = query.lte('completed_at', `${filters.to}T23:59:59.999Z`)
+  if (filters.to) query = query.lte('completed_at', \`\${filters.to}T23:59:59.999Z\`)
   const { data, error } = await query
   if (error) throw new Error(error.message)
   return (data ?? []) as RepairRecord[]
@@ -890,3 +889,8 @@ export async function getJobExportData(filters: { from?: string | null; to?: str
 export async function getStockExportData() {
   return listParts()
 }
+`
+
+const dest = path.join(__dirname, '..', 'src', 'lib', 'data.ts')
+fs.writeFileSync(dest, content, 'utf8')
+console.log('Wrote', dest, '—', content.split('\n').length, 'lines')

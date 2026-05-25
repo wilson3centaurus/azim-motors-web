@@ -4,7 +4,6 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
-  serverExternalPackages: ['sql.js'],
   async headers() {
     return [
       {
