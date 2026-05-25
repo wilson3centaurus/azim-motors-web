@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 // Helper script: writes the new Supabase-based data.ts
 // Run with: node scripts/write-data-ts.js
 const fs = require('fs')
