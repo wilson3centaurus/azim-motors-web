@@ -1,13 +1,11 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 export default function LoginPage() {
-  const router = useRouter()
   const [secret, setSecret] = useState('')
   const [useRecovery, setUseRecovery] = useState(false)
   const [identifier, setIdentifier] = useState('')
@@ -32,8 +30,9 @@ export default function LoginPage() {
         return
       }
 
-      router.replace(result.redirectTo ?? '/dashboard')
-      router.refresh()
+      // Hard navigation ensures the browser commits the session cookie before
+      // the next server request fires (router.replace races with Set-Cookie).
+      window.location.replace(result.redirectTo ?? '/dashboard')
     })
   }
 

@@ -486,13 +486,17 @@ export async function createUserAction(input: { email?: string; full_name: strin
   }
 
   const tempPassword = input.phone.trim()
-  await createUserRecord({
-    email: input.email,
-    full_name: input.full_name,
-    role: input.role,
-    phone: input.phone,
-    password: tempPassword,
-  })
+  try {
+    await createUserRecord({
+      email: input.email,
+      full_name: input.full_name,
+      role: input.role,
+      phone: input.phone,
+      password: tempPassword,
+    })
+  } catch (err) {
+    return actionError(err instanceof Error ? err.message : 'Failed to create user account.')
+  }
 
   revalidatePath('/settings/users')
   return actionOk({
