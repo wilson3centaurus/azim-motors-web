@@ -1,23 +1,24 @@
-const CACHE_NAME = 'hazim-motors-shell-v1'
+const CACHE_NAME = 'hazim-motors-shell-v2'
 const CORE_ASSETS = [
   '/offline.html',
-  '/manifest.webmanifest',
-  '/pwa-192x192.svg',
-  '/pwa-512x512.svg',
-  '/maskable-icon.svg',
-  '/apple-touch-icon.svg',
-  '/login',
+  '/manifest.json',
+  '/pwa-192x192.png',
+  '/pwa-512x512.png',
 ]
 
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS)).then(() => self.skipWaiting()),
+    caches.open(CACHE_NAME)
+      .then(cache => Promise.allSettled(CORE_ASSETS.map(url => cache.add(url))))
+      .then(() => self.skipWaiting()),
   )
 })
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))).then(() => self.clients.claim()),
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
+      .then(() => self.clients.claim()),
   )
 })
 
