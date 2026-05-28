@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useState, useTransition } from 'react'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -38,17 +39,23 @@ export default function LoginPage() {
 
   return (
     <div className="w-full max-w-md">
-      <div className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_32px_90px_-48px_rgba(21,38,36,0.55)] sm:p-8">
-        <div className="mb-8 text-center">
-          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-[22px] bg-[#1f5f59] shadow-[0_20px_40px_-20px_rgba(31,95,89,0.65)]">
-            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
+      <div className="rounded-xl border border-white/80 bg-white/92 p-5 shadow-[0_32px_90px_-48px_rgba(21,38,36,0.55)] sm:p-6">
+        <div className="mb-5 text-center">
+          <div className="mb-3 flex justify-center">
+            <Image
+              src="/hazin-motors-logo.png"
+              alt="Hazim Motors"
+              width={280}
+              height={96}
+              className="h-31 w-auto object-contain"
+              priority
+            />
           </div>
-          <h1 className="font-display text-3xl font-bold text-slate-900">Welcome back</h1>
+          <h1 className="font-display text-xl font-bold text-slate-900">Sign in to your account</h1>
+          <p className="mt-0.5 text-xs text-slate-500">Specialist in Mercedes Benz Services &amp; Repairs</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && <Alert variant="error">{error}</Alert>}
 
           <Input
@@ -89,7 +96,7 @@ export default function LoginPage() {
             }}
             className="w-full text-sm font-semibold text-[var(--accent)] transition hover:text-[var(--accent-strong)]"
           >
-            {useRecovery ? 'Back to PIN sign-in' : 'Forgot PIN or first sign-in? Use recovery access'}
+            {useRecovery ? 'Back to PIN sign-in' : 'Forgot PIN or first sign-in?'}
           </button>
         </form>
       </div>

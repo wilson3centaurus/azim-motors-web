@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useTransition } from 'react'
@@ -133,18 +134,22 @@ export function Sidebar({ role }: { role: UserRole }) {
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-30 flex w-[min(var(--sidebar-width),calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col overflow-hidden border-r border-[var(--line-soft)] bg-[var(--surface-panel)] shadow-[0_30px_80px_-48px_rgba(15,36,33,0.7)] backdrop-blur-xl',
-          'lg:bottom-4 lg:left-4 lg:top-4 lg:rounded-[1.75rem] lg:border lg:border-[var(--line)] lg:w-[calc(var(--sidebar-width)-1rem)]',
+          'lg:bottom-4 lg:left-4 lg:top-4 lg:rounded-xl lg:border lg:border-[var(--line)] lg:w-[calc(var(--sidebar-width)-1rem)]',
           'transition-transform duration-200 ease-in-out',
           open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
       >
-        <div className="border-b border-[var(--line)] px-5 pb-5 pt-6">
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#1f5f59] shadow-[0_18px_30px_-18px_rgba(31,95,89,0.7)]">
-              <Wrench className="h-5 w-5 text-white" />
-            </div>
+        <div className="border-b border-[var(--line)] px-5 pb-4 pt-5">
+          <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
-              <p className="font-display text-lg font-bold tracking-tight text-[var(--text-strong)]">Hazim Motors</p>
+              <Image
+                src="/hazin-motors-logo.png"
+                alt="Hazim Motors"
+                width={160}
+                height={54}
+                className="h-12 w-auto object-contain"
+                priority
+              />
             </div>
             <button
               type="button"
@@ -173,13 +178,13 @@ export function Sidebar({ role }: { role: UserRole }) {
                       key={href}
                       href={href}
                       className={cn(
-                        'group flex items-center gap-3 rounded-2xl px-3 py-3 text-[13px] transition-all duration-150',
+                        'group flex items-center gap-3 rounded-lg px-3 py-3 text-[13px] transition-all duration-150',
                         active
                           ? 'bg-[var(--surface-accent-soft)] text-[var(--accent-strong)] shadow-[0_18px_35px_-24px_rgba(24,73,68,0.45)]'
                           : 'text-[var(--text-muted)] hover:bg-[var(--surface-raised)] hover:text-[var(--text-strong)]',
                       )}
                     >
-                      <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors', active ? 'bg-[var(--surface-raised)] text-[#1f5f59]' : 'bg-[var(--surface-soft)] text-[var(--text-muted)] group-hover:bg-[var(--surface-raised)]')}>
+                      <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors', active ? 'bg-[var(--surface-raised)] text-[#1f5f59]' : 'bg-[var(--surface-soft)] text-[var(--text-muted)] group-hover:bg-[var(--surface-raised)]')}>
                         <Icon className="h-4 w-4" />
                       </div>
                       <div className="min-w-0 flex-1">

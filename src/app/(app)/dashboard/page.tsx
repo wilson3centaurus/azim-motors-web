@@ -113,12 +113,12 @@ function QuickActions({ role }: { role: UserRole }) {
             key={href}
             href={href}
             className={cn(
-              'group rounded-[24px] border border-white/70 bg-white/90 p-3 shadow-[0_24px_60px_-40px_rgba(19,40,37,0.45)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_32px_70px_-42px_rgba(19,40,37,0.55)] dark:border-[#27433e] dark:bg-[#102623]/92',
+              'group rounded-xl border border-white/70 bg-white/90 p-3 shadow-[0_4px_24px_-8px_rgba(19,40,37,0.2)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_-10px_rgba(19,40,37,0.3)] dark:border-[#27433e] dark:bg-[#102623]/92',
               'focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-[#081512]',
               ring,
             )}
           >
-            <div className={cn('flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br shadow-sm', gradient)}>
+            <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br shadow-sm', gradient)}>
               <Icon className="h-5 w-5 text-white" />
             </div>
             <p className="mt-4 text-sm font-semibold text-slate-900 dark:text-[#eef5f2]">{label}</p>
@@ -142,10 +142,10 @@ function Panel({
   children: React.ReactNode
 }) {
   return (
-    <section className="overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-[0_24px_60px_-40px_rgba(19,40,37,0.45)] dark:border-[#27433e] dark:bg-[#102623]/92">
+    <section className="overflow-hidden rounded-xl border border-white/70 bg-white/90 shadow-[0_4px_24px_-8px_rgba(19,40,37,0.18)] dark:border-[#27433e] dark:bg-[#102623]/92">
       <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 dark:border-[#1f3732] sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-[#edf8f1] dark:bg-[#17342f]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#edf8f1] dark:bg-[#17342f]">
             <Icon className="h-4 w-4 text-[#22714d] dark:text-[#8ec3b1]" />
           </div>
           <h2 className="truncate text-sm font-semibold text-slate-900 dark:text-[#eef5f2]">{title}</h2>

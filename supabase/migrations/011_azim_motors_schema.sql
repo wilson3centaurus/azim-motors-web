@@ -622,7 +622,33 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA azim_motors TO service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA azim_motors TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA azim_motors TO anon;
 
--- Expose azim_motors to PostgREST
-ALTER ROLE authenticator SET pgrst.db_schemas TO 'public,azim_motors';
-NOTIFY pgrst, 'reload config';
-NOTIFY pgrst, 'reload schema';
+-- ── PostgREST schema registration (SAFE — additive, never overwrites other projects) ──
+-- See robocore_docs/SHARED_DB_RULES.md Rule 2.
+-- NEVER use bare ALTER ROLE ... SET pgrst.db_schemas TO '...' — it destroys other projects.
+DO $$
+DECLARE
+  v_current text;
+  v_schema  text := 'azim_motors';
+BEGIN
+  SELECT split_part(cfg, '=', 2) INTO v_current
+  FROM pg_roles, unnest(rolconfig) AS cfg
+  WHERE rolname = 'authenticator'
+    AND cfg LIKE 'pgrst.db_schemas=%';
+
+  -- Fall back to the canonical full list if nothing is configured yet
+  IF v_current IS NULL OR v_current = '' THEN
+    v_current := 'public,storage,graphql_public,robocore,robokorda,aura,smartschools,azim_motors';
+  END IF;
+
+  IF position(v_schema IN v_current) = 0 THEN
+    EXECUTE format(
+      'ALTER ROLE authenticator SET "pgrst.db_schemas" TO %L',
+      v_current || ',' || v_schema
+    );
+    RAISE NOTICE 'pgrst.db_schemas updated to: %', v_current || ',' || v_schema;
+  ELSE
+    RAISE NOTICE 'Schema % already present in pgrst.db_schemas — no change.', v_schema;
+  END IF;
+
+  NOTIFY pgrst;
+END $$;

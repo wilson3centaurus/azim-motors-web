@@ -5,6 +5,7 @@
   "start_url": "/login",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "portrait",
   "background_color": "#081311",
   "theme_color": "#1f5f59",
