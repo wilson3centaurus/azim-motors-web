@@ -7,12 +7,14 @@ const path = require('path')
 const publicDir = path.join(__dirname, '..', 'public')
 const logoPath = path.join(publicDir, 'hazin-motors-logo.png')
 
-// Background colour matching the manifest background_color
-const BG = { r: 8, g: 19, b: 17 } // #081311
+// Background colours
+const WHITE = { r: 255, g: 255, b: 255, alpha: 255 }
+const BLUE  = { r: 23,  g: 84,  b: 175, alpha: 255 } // #1754af — logo blue
 
 async function makeIcon(outFile, size, maskable = false) {
-  const padding = maskable ? Math.round(size * 0.12) : 0
+  const padding = maskable ? Math.round(size * 0.12) : Math.round(size * 0.04)
   const logoSize = size - padding * 2
+  const bg = maskable ? BLUE : WHITE
 
   const resizedLogo = await sharp(logoPath)
     .resize(logoSize, logoSize, { fit: 'inside', background: { r: 0, g: 0, b: 0, alpha: 0 } })
@@ -20,10 +22,10 @@ async function makeIcon(outFile, size, maskable = false) {
 
   const { width: lw, height: lh } = await sharp(resizedLogo).metadata()
   const left = Math.round((size - lw) / 2)
-  const top = Math.round((size - lh) / 2)
+  const top  = Math.round((size - lh) / 2)
 
   await sharp({
-    create: { width: size, height: size, channels: 4, background: { ...BG, alpha: 255 } },
+    create: { width: size, height: size, channels: 4, background: bg },
   })
     .composite([{ input: resizedLogo, left, top }])
     .png()
