@@ -5,10 +5,10 @@ type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
 type Size = 'sm' | 'md' | 'lg'
 
 const variantClasses: Record<Variant, string> = {
-  primary: 'bg-[#1f5f59] text-white hover:bg-[#184944] focus:ring-[#1f5f59]',
-  secondary: 'bg-[var(--surface-raised)] text-[var(--text-strong)] ring-1 ring-[var(--line)] hover:bg-[var(--surface-card)] focus:ring-[#1f5f59]',
-  ghost: 'bg-transparent text-[var(--text-base)] hover:bg-[var(--surface-card)] focus:ring-[#1f5f59]',
-  danger: 'bg-[#b6452d] text-white hover:bg-[#933421] focus:ring-[#b6452d]',
+  primary: 'bg-[#1754af] text-white hover:bg-[#0d3d8c] focus:ring-[#1754af]',
+  secondary: 'bg-[var(--surface-raised)] text-[var(--text-strong)] ring-1 ring-[var(--line)] hover:bg-[var(--surface-soft)] focus:ring-[#1754af]',
+  ghost: 'bg-transparent text-[var(--text-base)] hover:bg-[var(--surface-soft)] focus:ring-[#1754af]',
+  danger: 'bg-[#cf222e] text-white hover:bg-[#a6191f] focus:ring-[#cf222e]',
 }
 
 const sizeClasses: Record<Size, string> = {
@@ -29,8 +29,8 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
-        'shadow-[0_14px_30px_-18px_rgba(24,73,68,0.45)]',
+        'inline-flex items-center justify-center gap-2 rounded-md font-semibold transition focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+        'shadow-[0_1px_3px_rgba(0,0,0,0.12)]',
         variantClasses[variant],
         sizeClasses[size],
         className,

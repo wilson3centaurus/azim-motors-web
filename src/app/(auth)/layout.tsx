@@ -2,46 +2,68 @@ import Image from 'next/image'
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen px-4 py-0 sm:px-6 sm:py-6 lg:px-8">
-        <div className="mx-auto grid min-h-screen max-w-6xl overflow-hidden rounded-none border-0 bg-[var(--surface-panel)] shadow-none backdrop-blur-sm sm:min-h-[calc(100vh-3rem)] sm:rounded-xl sm:border sm:border-[var(--line-soft)] sm:shadow-[0_40px_120px_-48px_rgba(21,38,36,0.65)] lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="relative hidden overflow-hidden bg-[#0d2455] p-10 text-white lg:flex lg:flex-col lg:justify-between">
-          <div>
-            <div className="mb-6 inline-block rounded-lg bg-white/10 p-3 backdrop-blur-sm">
-              <Image
-                src="/hazin-motors-logo.png"
-                alt="Hazin Motors"
-                width={220}
-                height={72}
-                className="h-16 w-auto object-contain"
-                priority
-              />
-            </div>
-            <h1 className="font-display mt-4 max-w-md text-4xl font-bold leading-tight">
-              Run the garage from the palm of your hand.
-            </h1>
-            <p className="mt-4 max-w-md text-sm leading-6 text-white/72">
-              Track jobs, stock, customers, and return dates in one compact system designed for busy Mercedes Benz workshop floors.
-            </p>
-          </div>
+    <div className="min-h-screen bg-[linear-gradient(135deg,#060f26_0%,#0a1a42_30%,#0d2455_60%,#1a4898_85%,#1e56bf_100%)]">
+      {/* ── Desktop split layout ───────────────────────── */}
+      <div className="mx-auto grid min-h-screen max-w-7xl lg:grid-cols-[55%_45%]">
 
-          <div className="relative mt-10 overflow-hidden rounded-lg border border-white/10 bg-white/8 p-5 backdrop-blur-sm">
+        {/* Left brand panel — desktop only */}
+        <div className="relative hidden overflow-hidden p-12 text-white lg:flex lg:flex-col lg:justify-between">
+          {/* Decorative radial glow */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_40%,rgba(88,166,255,0.12)_0%,transparent_65%)]" />
+
+          <div className="relative">
             <Image
-              src="/garage-hero.svg"
-              alt="Illustration of a garage and vehicle"
-              width={960}
-              height={720}
-              className="h-auto w-full rounded-md"
+              src="/hazin-motors-logo.png"
+              alt="Hazin Motors"
+              width={300}
+              height={100}
+              className="h-24 w-auto object-contain drop-shadow-lg"
               priority
             />
+            <h2 className="font-display mt-8 max-w-sm text-4xl font-bold leading-tight tracking-tight text-white">
+              Run the garage from your pocket.
+            </h2>
+            <p className="mt-5 max-w-sm text-[15px] leading-7 text-white/60">
+              Track jobs, stock, customers, and return dates — built for Mercedes Benz workshop floors.
+            </p>
+
+            <div className="mt-8 space-y-3">
+              {["Real-time job card tracking", "Parts & inventory management", "Customer & vehicle records", "Return date calendar"].map((f) => (
+                <div key={f} className="flex items-center gap-3 text-sm text-white/70">
+                  <div className="h-1.5 w-1.5 rounded-full bg-[#58a6ff]" />
+                  {f}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="relative rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm">
+            <p className="text-sm font-semibold text-white">Specialist in Mercedes Benz Services &amp; Repairs</p>
+            <p className="mt-1 text-xs text-white/45">Powered by Hazin Motors Workshop System</p>
           </div>
         </div>
 
-        <div className="flex min-h-full flex-col justify-center p-4 sm:p-8 lg:p-10">
-          <div className="mx-auto flex w-full max-w-md flex-1 items-center">{children}</div>
-
-          <div className="mt-8 text-xs text-[var(--text-muted)]">
-            Fast check-ins, cleaner job flows, and live workshop visibility.
+        {/* Right form panel */}
+        <div className="flex min-h-screen flex-col items-center justify-center px-5 py-10 lg:bg-white/5 lg:backdrop-blur-md lg:dark:bg-black/20">
+          {/* Mobile logo — hidden on desktop (left panel has it) */}
+          <div className="mb-8 lg:hidden">
+            <Image
+              src="/hazin-motors-logo.png"
+              alt="Hazin Motors"
+              width={320}
+              height={108}
+              className="h-28 w-auto object-contain drop-shadow-xl"
+              priority
+            />
           </div>
+
+          <div className="w-full max-w-sm">
+            {children}
+          </div>
+
+          <p className="mt-8 text-center text-xs text-white/30">
+            Fast check-ins · Cleaner job flows · Live workshop visibility
+          </p>
         </div>
       </div>
     </div>

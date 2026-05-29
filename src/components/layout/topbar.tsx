@@ -20,17 +20,17 @@ export async function Topbar({ title }: { title?: string }) {
   })
 
   return (
-    <header className="sticky top-2 z-20 flex shrink-0 items-start justify-between gap-2 rounded-[1.5rem] border border-[var(--line)] bg-[var(--surface-panel)] px-3 py-2.5 shadow-[0_22px_60px_-42px_rgba(15,36,33,0.45)] backdrop-blur-xl sm:items-center sm:gap-3 sm:px-5 sm:py-3 lg:top-4 lg:border-[color-mix(in_srgb,var(--line)_82%,transparent)]">
-      <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center sm:gap-3">
+    <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between gap-3 border-b border-[var(--line)] bg-[var(--surface-card)] px-4 py-3 shadow-[0_1px_3px_rgba(0,0,0,0.06)] backdrop-blur-sm lg:top-0 lg:px-5">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <MobileMenuButton />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-base font-bold leading-tight text-[var(--text-strong)] sm:text-lg">{title ?? 'Hazin Motors'}</h1>
+          <h1 className="truncate font-display text-[15px] font-semibold leading-tight text-[var(--text-strong)] sm:text-base">{title ?? 'Hazin Motors'}</h1>
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 self-center sm:gap-2">
-        <div className="hidden items-center gap-2 rounded-2xl border border-[var(--line-strong)] bg-[var(--surface-muted)] px-3 py-2 text-xs font-medium text-[var(--text-base)] md:flex">
-          <CalendarDays className="h-4 w-4 text-[#d86f45]" />
+      <div className="flex shrink-0 items-center gap-2">
+        <div className="hidden items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] md:flex">
+          <CalendarDays className="h-3.5 w-3.5 text-[#1754af]" />
           {today}
         </div>
 
@@ -39,13 +39,13 @@ export async function Topbar({ title }: { title?: string }) {
         <button
           type="button"
           aria-label="Notifications"
-          className="hidden rounded-2xl border border-[var(--line-strong)] bg-[var(--surface-raised)] p-2.5 text-[var(--text-muted)] transition-colors hover:text-[var(--text-strong)] focus:outline-none focus:ring-2 focus:ring-[#1f5f59] focus:ring-offset-1 focus:ring-offset-transparent sm:inline-flex"
+          className="hidden rounded-md border border-[var(--line)] bg-[var(--surface-raised)] p-2 text-[var(--text-muted)] transition-colors hover:text-[var(--text-strong)] focus:outline-none sm:inline-flex"
         >
           <Bell className="h-4 w-4" />
         </button>
 
-        <div className="flex items-center gap-2 rounded-2xl border border-[var(--line-strong)] bg-[var(--surface-raised)] px-1.5 py-1.5 sm:px-2 sm:py-2 sm:pl-2.5 sm:pr-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-2xl bg-[#1f5f59] text-[10px] font-bold text-white shadow-[0_18px_28px_-20px_rgba(31,95,89,0.8)] sm:h-9 sm:w-9 sm:text-[11px]">
+        <div className="flex items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--surface-raised)] px-2 py-1.5 sm:pl-2.5 sm:pr-3">
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#1754af] text-[10px] font-bold text-white sm:h-8 sm:w-8">
             {initials}
           </div>
           <div className="hidden min-w-0 sm:block">

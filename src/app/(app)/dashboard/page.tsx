@@ -43,28 +43,28 @@ type QuickAction = {
 
 const QUICK_ACTIONS_BY_ROLE: Record<UserRole, QuickAction[]> = {
   admin: [
-    { href: '/job-cards/new', label: 'New Job Card', description: 'Open a repair intake', icon: ClipboardList, gradient: 'from-[#2e6f68] to-[#1f5f59]', ring: 'focus:ring-[#2e6f68]' },
-    { href: '/customers/new', label: 'Add Customer', description: 'Register a vehicle owner', icon: UserPlus, gradient: 'from-[#53a27b] to-[#22714d]', ring: 'focus:ring-[#22714d]' },
-    { href: '/inventory/new', label: 'Add Part', description: 'Stock a new item', icon: PlusCircle, gradient: 'from-[#d9af57] to-[#b98d2c]', ring: 'focus:ring-[#b98d2c]' },
-    { href: '/sales', label: 'Open POS', description: 'Record a stock sale', icon: ShoppingCart, gradient: 'from-[#ef9259] to-[#d86f45]', ring: 'focus:ring-[#d86f45]' },
+    { href: '/job-cards/new', label: 'New Job Card', description: 'Open a repair intake', icon: ClipboardList, gradient: 'from-[#1754af] to-[#0d3d8c]', ring: 'focus:ring-[#1754af]' },
+    { href: '/customers/new', label: 'Add Customer', description: 'Register a vehicle owner', icon: UserPlus, gradient: 'from-[#2878d0] to-[#1463b8]', ring: 'focus:ring-[#1463b8]' },
+    { href: '/inventory/new', label: 'Add Part', description: 'Stock a new item', icon: PlusCircle, gradient: 'from-[#3d90e0] to-[#1e6bc4]', ring: 'focus:ring-[#1e6bc4]' },
+    { href: '/sales', label: 'Open POS', description: 'Record a stock sale', icon: ShoppingCart, gradient: 'from-[#5ba3ea] to-[#2d7bd4]', ring: 'focus:ring-[#2d7bd4]' },
   ],
   mechanic: [
-    { href: '/job-cards/new', label: 'New Job Card', description: 'Book in a vehicle', icon: ClipboardList, gradient: 'from-[#2e6f68] to-[#1f5f59]', ring: 'focus:ring-[#2e6f68]' },
-    { href: '/job-cards', label: 'Active Repairs', description: 'Update assigned jobs', icon: Wrench, gradient: 'from-[#ef9259] to-[#d86f45]', ring: 'focus:ring-[#d86f45]' },
-    { href: '/customers/new', label: 'Add Customer', description: 'Capture workshop intake', icon: UserPlus, gradient: 'from-[#53a27b] to-[#22714d]', ring: 'focus:ring-[#22714d]' },
-    { href: '/return-dates', label: 'Return Calendar', description: 'Check promised dates', icon: CalendarClock, gradient: 'from-[#d9af57] to-[#b98d2c]', ring: 'focus:ring-[#b98d2c]' },
+    { href: '/job-cards/new', label: 'New Job Card', description: 'Book in a vehicle', icon: ClipboardList, gradient: 'from-[#1754af] to-[#0d3d8c]', ring: 'focus:ring-[#1754af]' },
+    { href: '/job-cards', label: 'Active Repairs', description: 'Update assigned jobs', icon: Wrench, gradient: 'from-[#2878d0] to-[#1463b8]', ring: 'focus:ring-[#1463b8]' },
+    { href: '/customers/new', label: 'Add Customer', description: 'Capture workshop intake', icon: UserPlus, gradient: 'from-[#3d90e0] to-[#1e6bc4]', ring: 'focus:ring-[#1e6bc4]' },
+    { href: '/return-dates', label: 'Return Calendar', description: 'Check promised dates', icon: CalendarClock, gradient: 'from-[#5ba3ea] to-[#2d7bd4]', ring: 'focus:ring-[#2d7bd4]' },
   ],
   salesperson: [
-    { href: '/sales', label: 'New Sale', description: 'Serve a walk-in customer', icon: ShoppingCart, gradient: 'from-[#ef9259] to-[#d86f45]', ring: 'focus:ring-[#d86f45]' },
-    { href: '/inventory', label: 'Check Stock', description: 'Search available parts', icon: Package, gradient: 'from-[#d9af57] to-[#b98d2c]', ring: 'focus:ring-[#b98d2c]' },
-    { href: '/inventory/new', label: 'Receive Stock', description: 'Add a new stocked item', icon: PlusCircle, gradient: 'from-[#53a27b] to-[#22714d]', ring: 'focus:ring-[#22714d]' },
-    { href: '/customers/new', label: 'New Customer', description: 'Capture buyer details', icon: UserPlus, gradient: 'from-[#2e6f68] to-[#1f5f59]', ring: 'focus:ring-[#2e6f68]' },
+    { href: '/sales', label: 'New Sale', description: 'Serve a walk-in customer', icon: ShoppingCart, gradient: 'from-[#1754af] to-[#0d3d8c]', ring: 'focus:ring-[#1754af]' },
+    { href: '/inventory', label: 'Check Stock', description: 'Search available parts', icon: Package, gradient: 'from-[#2878d0] to-[#1463b8]', ring: 'focus:ring-[#1463b8]' },
+    { href: '/inventory/new', label: 'Receive Stock', description: 'Add a new stocked item', icon: PlusCircle, gradient: 'from-[#3d90e0] to-[#1e6bc4]', ring: 'focus:ring-[#1e6bc4]' },
+    { href: '/customers/new', label: 'New Customer', description: 'Capture buyer details', icon: UserPlus, gradient: 'from-[#5ba3ea] to-[#2d7bd4]', ring: 'focus:ring-[#2d7bd4]' },
   ],
   receptionist: [
-    { href: '/job-cards/new', label: 'New Job Card', description: 'Open a repair intake', icon: ClipboardList, gradient: 'from-[#2e6f68] to-[#1f5f59]', ring: 'focus:ring-[#2e6f68]' },
-    { href: '/customers/new', label: 'Add Customer', description: 'Register a vehicle owner', icon: UserPlus, gradient: 'from-[#53a27b] to-[#22714d]', ring: 'focus:ring-[#22714d]' },
-    { href: '/return-dates', label: 'Return Calendar', description: 'View scheduled returns', icon: CalendarClock, gradient: 'from-[#d9af57] to-[#b98d2c]', ring: 'focus:ring-[#b98d2c]' },
-    { href: '/job-cards', label: 'Job Cards', description: 'Track active repairs', icon: ClipboardList, gradient: 'from-[#ef9259] to-[#d86f45]', ring: 'focus:ring-[#d86f45]' },
+    { href: '/job-cards/new', label: 'New Job Card', description: 'Open a repair intake', icon: ClipboardList, gradient: 'from-[#1754af] to-[#0d3d8c]', ring: 'focus:ring-[#1754af]' },
+    { href: '/customers/new', label: 'Add Customer', description: 'Register a vehicle owner', icon: UserPlus, gradient: 'from-[#2878d0] to-[#1463b8]', ring: 'focus:ring-[#1463b8]' },
+    { href: '/return-dates', label: 'Return Calendar', description: 'View scheduled returns', icon: CalendarClock, gradient: 'from-[#3d90e0] to-[#1e6bc4]', ring: 'focus:ring-[#1e6bc4]' },
+    { href: '/job-cards', label: 'Job Cards', description: 'Track active repairs', icon: ClipboardList, gradient: 'from-[#5ba3ea] to-[#2d7bd4]', ring: 'focus:ring-[#2d7bd4]' },
   ],
 }
 
@@ -91,7 +91,7 @@ function DashboardHeader({ name, role }: { name: string; role: UserRole }) {
         </h1>
         <p className="mt-1 text-xs text-slate-500 dark:text-[#9eb5af] sm:text-sm">{today}</p>
       </div>
-      <div className="inline-flex w-fit max-w-full items-center rounded-full border border-[#d7e5df] bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm dark:border-[#27433e] dark:bg-[#102623] dark:text-[#c7d8d2]">
+      <div className="inline-flex w-fit max-w-full items-center rounded-full border border-[var(--line)] bg-[var(--surface-muted)] px-3 py-1.5 text-xs font-semibold text-[var(--text-muted)]">
         {ROLE_LABELS[role]} Workspace
       </div>
     </div>
@@ -104,8 +104,8 @@ function QuickActions({ role }: { role: UserRole }) {
   return (
     <section>
       <div className="mb-2.5 flex items-center gap-2.5">
-        <p className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400 dark:text-[#7f9791]">Quick actions</p>
-        <div className="h-px flex-1 bg-slate-200 dark:bg-[#27433e]" />
+        <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--text-soft)]">Quick actions</p>
+        <div className="h-px flex-1 bg-[var(--line)]" />
       </div>
       <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2 lg:grid-cols-4">
         {actions.map(({ href, label, description, icon: Icon, gradient, ring }) => (
@@ -113,8 +113,8 @@ function QuickActions({ role }: { role: UserRole }) {
             key={href}
             href={href}
             className={cn(
-              'group rounded-xl border border-white/70 bg-white/90 p-3 shadow-[0_4px_24px_-8px_rgba(19,40,37,0.2)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_30px_-10px_rgba(19,40,37,0.3)] dark:border-[#27433e] dark:bg-[#102623]/92',
-              'focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-[#081512]',
+              'group rounded-lg border border-[var(--line)] bg-[var(--surface-card)] p-3.5 shadow-[var(--rc-shadow-sm,0_1px_3px_rgba(0,0,0,0.06))] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#1754af]/40 hover:shadow-[0_4px_12px_-4px_rgba(23,84,175,0.2)]',
+              'focus:outline-none focus:ring-2 focus:ring-offset-2',
               ring,
             )}
           >

@@ -9,12 +9,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <SidebarProvider>
-        <div className="flex min-h-full w-full overflow-x-clip bg-transparent lg:pb-4 lg:pr-4">
+        <div className="flex min-h-full w-full overflow-x-clip bg-transparent">
         <PinSetupGate open={!user.has_pin} fullName={user.full_name} />
         <Sidebar role={user.role} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:ml-[var(--sidebar-width)]">
           <Topbar />
-          <main className="flex-1 overflow-y-auto overflow-x-clip px-2 pb-3 pt-2 sm:px-4 sm:pb-5 sm:pt-4 lg:px-5 lg:pb-6 lg:pt-5">
+          <main className="flex-1 overflow-y-auto overflow-x-clip px-3 pb-4 pt-3 sm:px-5 sm:pb-5 sm:pt-4 lg:px-6 lg:pb-6 lg:pt-5">
             {children}
           </main>
         </div>
