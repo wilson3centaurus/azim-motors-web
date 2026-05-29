@@ -5,14 +5,14 @@ import { PwaRegistration } from '@/components/pwa/pwa-registration'
 import { ThemeProvider } from '@/lib/theme'
 
 export const metadata: Metadata = {
-  title: 'Hazim Motors',
+  title: 'Hazin Motors',
   description: 'Garage Management System',
-  applicationName: 'Hazim Motors',
+  applicationName: 'Hazin Motors',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Hazim Motors',
+    title: 'Hazin Motors',
   },
   formatDetection: {
     telephone: false,

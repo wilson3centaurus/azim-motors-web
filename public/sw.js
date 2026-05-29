@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hazim-motors-shell-v2'
+const CACHE_NAME = 'hazin-motors-shell-v2'
 const CORE_ASSETS = [
   '/offline.html',
   '/manifest.json',

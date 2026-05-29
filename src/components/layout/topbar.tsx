@@ -24,7 +24,7 @@ export async function Topbar({ title }: { title?: string }) {
       <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center sm:gap-3">
         <MobileMenuButton />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-base font-bold leading-tight text-[var(--text-strong)] sm:text-lg">{title ?? 'Hazim Motors'}</h1>
+          <h1 className="truncate font-display text-base font-bold leading-tight text-[var(--text-strong)] sm:text-lg">{title ?? 'Hazin Motors'}</h1>
         </div>
       </div>
 

@@ -44,7 +44,7 @@ export default function LoginPage() {
           <div className="mb-3 flex justify-center">
             <Image
               src="/hazin-motors-logo.png"
-              alt="Hazim Motors"
+              alt="Hazin Motors"
               width={280}
               height={96}
               className="h-31 w-auto object-contain"

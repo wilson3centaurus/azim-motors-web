@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             <div className="mb-6 inline-block rounded-lg bg-white/10 p-3 backdrop-blur-sm">
               <Image
                 src="/hazin-motors-logo.png"
-                alt="Hazim Motors"
+                alt="Hazin Motors"
                 width={220}
                 height={72}
                 className="h-16 w-auto object-contain"

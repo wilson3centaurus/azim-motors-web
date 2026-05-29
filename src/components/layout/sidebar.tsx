@@ -144,7 +144,7 @@ export function Sidebar({ role }: { role: UserRole }) {
             <div className="min-w-0 flex-1">
               <Image
                 src="/hazin-motors-logo.png"
-                alt="Hazim Motors"
+                alt="Hazin Motors"
                 width={160}
                 height={54}
                 className="h-12 w-auto object-contain"
