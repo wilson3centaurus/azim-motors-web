@@ -134,7 +134,7 @@ export function Sidebar({ role }: { role: UserRole }) {
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-30 flex w-[min(var(--sidebar-width),calc(100vw-1rem))] max-w-[calc(100vw-1rem)] flex-col overflow-hidden border-r border-[var(--line-soft)] bg-[var(--surface-panel)] shadow-[0_30px_80px_-48px_rgba(15,36,33,0.7)] backdrop-blur-xl',
-          'lg:bottom-4 lg:left-4 lg:top-4 lg:rounded-xl lg:border lg:border-[var(--line)] lg:w-[calc(var(--sidebar-width)-1rem)]',
+          'lg:bottom-0 lg:left-0 lg:top-0 lg:rounded-none lg:border-r lg:border-[var(--line)] lg:w-[var(--sidebar-width)]',
           'transition-transform duration-200 ease-in-out',
           open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}

@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-full w-full overflow-x-clip bg-transparent lg:p-4">
+        <div className="flex min-h-full w-full overflow-x-clip bg-transparent lg:pb-4 lg:pr-4">
         <PinSetupGate open={!user.has_pin} fullName={user.full_name} />
         <Sidebar role={user.role} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col lg:ml-[var(--sidebar-width)]">
